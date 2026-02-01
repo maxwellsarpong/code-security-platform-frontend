@@ -1,0 +1,19 @@
+{
+  "name": "security-compliance-frontend",
+  "private": true,
+  "description": "Code security platform - landing page and dashboard",
+  "workspaces": [
+    "apps/landing",
+    "apps/dashboard"
+  ],
+  "scripts": {
+    "dev:landing": "npm run dev --workspace=apps/landing",
+    "dev:dashboard": "npm run dev --workspace=apps/dashboard",
+    "build:landing": "npm run build --workspace=apps/landing",
+    "build:dashboard": "npm run build --workspace=apps/dashboard",
+    "build": "npm run build:landing && npm run build:dashboard"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
