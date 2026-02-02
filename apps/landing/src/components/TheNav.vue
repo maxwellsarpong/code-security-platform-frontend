@@ -13,6 +13,7 @@ const menuOpen = ref(false)
       </a>
       <nav class="links" :class="{ open: menuOpen }">
         <a href="#features">Features</a>
+        <a href="#metrics">Metrics</a>
         <a href="#billing">Pricing</a>
         <a href="#cta">Get started</a>
       </nav>

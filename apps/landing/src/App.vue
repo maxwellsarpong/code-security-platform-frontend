@@ -3,6 +3,7 @@ import TheNav from './components/TheNav.vue'
 import HeroSection from './components/HeroSection.vue'
 import FeaturesSection from './components/FeaturesSection.vue'
 import BillingSection from './components/BillingSection.vue'
+import MetricsSection from './components/MetricsSection.vue'
 import CtaSection from './components/CtaSection.vue'
 import TheFooter from './components/TheFooter.vue'
 </script>
@@ -13,6 +14,7 @@ import TheFooter from './components/TheFooter.vue'
     <main>
       <HeroSection />
       <FeaturesSection />
+      <MetricsSection />
       <BillingSection />
       <CtaSection />
     </main>
