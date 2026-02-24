@@ -2,7 +2,7 @@
 
 Monorepo for the code security platform frontend:
 
-- **`apps/landing`** – Marketing landing page (billing, pricing, sign-up).
+- **`apps/landing`** – Marketing landing page with **checkout** (`/checkout`) and **sign-in** (`/login`). Billing CTAs go to checkout; “Go to dashboard” goes to the auth page. After sign-in, redirects to the dashboard app (set `VITE_DASHBOARD_URL` in `apps/landing/.env`; see `apps/landing/.env.example`).
 - **`apps/dashboard`** – Platform dashboard (post-login).
 
 ## Quick start
@@ -11,11 +11,12 @@ Monorepo for the code security platform frontend:
 # Install dependencies (from repo root)
 npm install
 
-# Run landing page
-npm run dev:landing
+# Run both landing and dashboard apps concurrently
+npm run dev
 
-# Run dashboard (when built out)
-npm run dev:dashboard
+# Or run individually:
+npm run dev:landing  # Landing page only
+npm run dev:dashboard  # Dashboard only
 ```
 
 ## Build

@@ -107,64 +107,103 @@ onMounted(() => {
 <style scoped>
 .metrics {
   background: var(--bg);
+  background: linear-gradient(135deg, transparent 0%, rgba(34, 211, 238, 0.03) 100%);
 }
 
 .metrics-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 4rem;
 }
 
 .metric-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.5rem;
   text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.3), transparent);
+}
+
+.metric-card:hover {
+  border-color: rgba(34, 211, 238, 0.4);
+  box-shadow: 0 12px 32px rgba(34, 211, 238, 0.15);
+  transform: translateY(-6px);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, var(--bg-card) 100%);
 }
 
 .metric-value {
   display: block;
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   font-family: var(--font-mono);
   color: var(--accent);
+  margin-bottom: 0.5rem;
 }
 
 .metric-label {
   font-size: 0.85rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
-  display: block;
+  font-weight: 500;
 }
 
 .charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .chart-block {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.2), transparent);
+}
+
+.chart-block:hover {
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 12px 32px rgba(34, 211, 238, 0.1);
 }
 
 .chart-title {
   font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.75rem;
   color: var(--text);
 }
 
 .bar-chart--vertical .bar-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .bar-chart--vertical .bar-row:last-child {
@@ -172,47 +211,50 @@ onMounted(() => {
 }
 
 .bar-label {
-  flex: 0 0 120px;
+  flex: 0 0 140px;
   font-size: 0.9rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 .bar-track {
   flex: 1;
   position: relative;
-  height: 28px;
-  background: var(--bg-elevated);
-  border-radius: 6px;
+  height: 32px;
+  background: rgba(34, 211, 238, 0.05);
+  border-radius: 8px;
   overflow: hidden;
   min-width: 0;
+  border: 1px solid rgba(34, 211, 238, 0.1);
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 6px;
-  transition: width 0.8s ease-out;
+  border-radius: 7px;
+  transition: width 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .bar-fill--accent {
-  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  background: linear-gradient(90deg, rgba(8, 145, 178, 0.8), var(--accent));
 }
 
 .bar-value {
   position: absolute;
-  right: 8px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text);
-  text-shadow: 0 0 8px rgba(10, 15, 26, 0.8);
   z-index: 1;
 }
 
 .metrics-note {
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 </style>

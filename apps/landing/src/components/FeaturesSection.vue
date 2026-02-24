@@ -44,42 +44,63 @@ const features = [
 <style scoped>
 .features {
   background: var(--bg-elevated);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.03) 0%, var(--bg-elevated) 50%);
 }
 
 .features-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .feature-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.75rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.3), transparent);
 }
 
 .feature-card:hover {
-  border-color: rgba(34, 211, 238, 0.3);
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.4);
+  box-shadow: 0 12px 32px rgba(34, 211, 238, 0.15);
+  transform: translateY(-8px);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, var(--bg-card) 100%);
 }
 
 .feature-icon {
-  font-size: 1.75rem;
+  font-size: 2.5rem;
   display: block;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  transition: transform 0.3s ease;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.15) rotate(5deg);
 }
 
 .feature-title {
   font-size: 1.15rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--text);
 }
 
 .feature-desc {
   color: var(--text-muted);
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 </style>

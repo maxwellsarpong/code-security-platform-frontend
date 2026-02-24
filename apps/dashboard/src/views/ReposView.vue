@@ -1,11 +1,139 @@
 <script setup>
-const repos = [
-  { name: 'acme-api', provider: 'GitHub', branch: 'main', lastScan: '2 hrs ago', status: 'passed', issues: 0 },
-  { name: 'acme-web', provider: 'GitHub', branch: 'main', lastScan: '15 min ago', status: 'failed', issues: 2 },
-  { name: 'acme-mobile', provider: 'GitHub', branch: 'main', lastScan: '2 hrs ago', status: 'passed', issues: 0 },
-  { name: 'acme-infra', provider: 'GitHub', branch: 'main', lastScan: '1 day ago', status: 'passed', issues: 0 },
-  { name: 'acme-docs', provider: 'GitHub', branch: 'main', lastScan: '3 days ago', status: 'passed', issues: 0 },
-]
+import { ref, onMounted, computed } from 'vue'
+import DashboardAuthService from '../services/authService'
+import Toast from '../components/Toast.vue'
+
+const repos = ref([])
+const isLoading = ref(false)
+const error = ref(null)
+const resolvingFindings = ref(new Set()) // Track which findings are being resolved
+
+// Toast notification
+const toast = ref({
+  show: false,
+  variant: 'success',
+  message: ''
+})
+
+const showToast = (message, variant = 'success') => {
+  toast.value = {
+    show: true,
+    variant,
+    message
+  }
+}
+
+// Issues modal
+const isIssuesModalOpen = ref(false)
+const selectedRepo = ref(null)
+
+const openIssuesModal = (repo) => {
+  selectedRepo.value = repo
+  isIssuesModalOpen.value = true
+}
+
+const closeIssuesModal = () => {
+  isIssuesModalOpen.value = false
+  selectedRepo.value = null
+}
+
+// Pagination
+const ITEMS_PER_PAGE = 8
+const currentPage = ref(1)
+
+const getRepoName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1]
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr || dateStr === 'Recently') return 'Recently'
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (e) {
+    return dateStr
+  }
+}
+
+const fetchRepos = async () => {
+  isLoading.value = true
+  error.value = null
+  try {
+    const response = await DashboardAuthService.request('/scans', {
+      method: 'GET'
+    })
+    if (!response.ok) throw new Error('Failed to fetch repositories data')
+    const scans = await response.json()
+    
+    // Group scans by repo_url and get latest info for each
+    const repoMap = {}
+    scans.forEach(scan => {
+      if (!repoMap[scan.repo_url]) {
+        repoMap[scan.repo_url] = {
+          repo_url: scan.repo_url,
+          provider: 'GitHub', // Default to GitHub as per current UI
+          lastScan: scan.created_at || 'Recently',
+          riskScore: scan.risk_score || 0,
+          issues: scan.findings ? scan.findings.length : 0,
+          findings: scan.findings || [] // Store findings for resolving
+        }
+      }
+    })
+    
+    repos.value = Object.values(repoMap)
+  } catch (err) {
+    console.error('Error fetching repos:', err)
+    error.value = err.message
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(fetchRepos)
+
+const totalPages = computed(() => Math.ceil(repos.value.length / ITEMS_PER_PAGE))
+
+const paginatedRepos = computed(() => {
+  const start = (currentPage.value - 1) * ITEMS_PER_PAGE
+  const end = start + ITEMS_PER_PAGE
+  return repos.value.slice(start, end)
+})
+
+const changePage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+const resolveFinding = async (finding) => {
+  resolvingFindings.value.add(finding.id)
+  try {
+    const response = await DashboardAuthService.request(
+      `/findings/${finding.id}/resolve`,
+      { method: 'POST' }
+    )
+    if (!response.ok) throw new Error('Failed to resolve finding')
+    showToast('Finding resolved successfully!', 'success')
+    // Remove resolved finding from the list
+    if (selectedRepo.value && selectedRepo.value.findings) {
+      selectedRepo.value.findings = selectedRepo.value.findings.filter(f => f.id !== finding.id)
+      selectedRepo.value.issues = selectedRepo.value.findings.length
+    }
+  } catch (err) {
+    console.error('Error resolving finding:', err)
+    showToast('Failed to resolve finding', 'error')
+  } finally {
+    resolvingFindings.value.delete(finding.id)
+  }
+}
 </script>
 
 <template>
@@ -16,43 +144,149 @@ const repos = [
     </div>
 
     <div class="card table-card">
-      <div class="table-wrap">
+      <div v-if="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading repositories...</p>
+      </div>
+
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+        <button type="button" class="btn btn-ghost" @click="fetchRepos">Retry</button>
+      </div>
+
+      <div v-else-if="repos.length === 0" class="empty-state">
+        <p>No repositories found</p>
+      </div>
+
+      <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Repository</th>
               <th>Provider</th>
-              <th>Default branch</th>
-              <th>Last scan</th>
-              <th>Status</th>
-              <th>Open issues</th>
+              <th>Last Scan</th>
+              <th>Risk score</th>
+              <th>Open Issues</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in repos" :key="r.name">
+            <tr v-for="r in paginatedRepos" :key="r.repo_url">
               <td>
-                <span class="repo-name">{{ r.name }}</span>
+                <span class="repo-name">{{ getRepoName(r.repo_url) }}</span>
               </td>
               <td>{{ r.provider }}</td>
-              <td><code class="code">{{ r.branch }}</code></td>
-              <td class="text-muted">{{ r.lastScan }}</td>
+              <td class="text-muted">{{ formatDate(r.lastScan) }}</td>
               <td>
-                <span class="badge" :class="r.status === 'passed' ? 'badge--success' : 'badge--critical'">
-                  {{ r.status }}
-                </span>
+                <span class="risk-score">{{ r.riskScore.toFixed(1) }}</span>
               </td>
               <td>{{ r.issues }}</td>
               <td>
-                <router-link :to="`/scans?repo=${r.name}`" class="link">Scans</router-link>
-                <span class="sep">·</span>
-                <button type="button" class="btn-link">Settings</button>
+                <button 
+                  type="button" 
+                  class="btn btn-ghost btn-sm"
+                  @click="openIssuesModal(r)"
+                >
+                  Resolve issue
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <div v-if="totalPages > 1" class="pagination">
+        <button 
+          type="button" 
+          class="btn-icon" 
+          :disabled="currentPage === 1"
+          @click="changePage(currentPage - 1)"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="page-numbers">
+          <button 
+            v-for="p in totalPages" 
+            :key="p"
+            type="button"
+            class="page-num"
+            :class="{ active: currentPage === p }"
+            @click="changePage(p)"
+          >
+            {{ p }}
+          </button>
+        </div>
+        <button 
+          type="button" 
+          class="btn-icon" 
+          :disabled="currentPage === totalPages"
+          @click="changePage(currentPage + 1)"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
+
+    <!-- Issues Modal -->
+    <div v-if="isIssuesModalOpen" class="modal-overlay" @click="closeIssuesModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ selectedRepo ? getRepoName(selectedRepo.repo_url) : 'Issues' }}</h2>
+          <button 
+            type="button" 
+            class="btn-close"
+            @click="closeIssuesModal"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="selectedRepo && selectedRepo.findings.length > 0" class="findings-list">
+            <div 
+              v-for="finding in selectedRepo.findings" 
+              :key="finding.id"
+              class="finding-card"
+            >
+              <div class="finding-header">
+                <h3>{{ finding.title }}</h3>
+                <span class="severity-badge" :class="`severity-${finding.severity}`">
+                  {{ finding.severity }}
+                </span>
+              </div>
+              <div v-if="finding.file_path" class="finding-meta">
+                <span class="meta-item">{{ finding.file_path }}</span>
+                <span v-if="finding.line_number" class="meta-item">Line {{ finding.line_number }}</span>
+              </div>
+              <p v-if="finding.description" class="finding-desc">{{ finding.description }}</p>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm resolve-btn"
+                :disabled="resolvingFindings.has(finding.id)"
+                @click="resolveFinding(finding)"
+              >
+                <span v-if="resolvingFindings.has(finding.id)" class="spinner-small"></span>
+                <span v-else>Resolve</span>
+              </button>
+            </div>
+          </div>
+          <div v-else class="empty-findings">
+            <p>No issues found in this repository</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <Toast 
+      v-if="toast.show"
+      :variant="toast.variant"
+      :message="toast.message"
+      @close="toast.show = false"
+    />
   </div>
 </template>
 
@@ -60,7 +294,7 @@ const repos = [
 .repos-view {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .view-header {
@@ -68,60 +302,328 @@ const repos = [
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .view-desc {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-size: 1rem;
   margin: 0;
+  flex: 1;
 }
 
 .table-card {
   padding: 0;
   overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .table-card .table-wrap {
   border: none;
   border-radius: 0;
+  box-shadow: none;
 }
 
 .repo-name {
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.risk-score {
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 1rem;
 }
 
 .code {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   background: var(--bg-elevated);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
 }
 
 .text-muted {
   color: var(--text-muted);
 }
 
-.sep {
-  color: var(--border);
-  margin: 0 0.35rem;
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-light);
 }
 
-.btn-link {
+.page-numbers {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.page-num {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.page-num:hover:not(.active) {
+  border-color: var(--text-secondary);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.page-num.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  gap: 1.25rem;
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 600px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.btn-close {
   background: none;
   border: none;
-  color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
 }
 
-.btn-link:hover {
-  text-decoration: underline;
+.btn-close:hover {
+  color: var(--text);
 }
 
-.link {
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.finding-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: var(--bg-elevated);
+  transition: all var(--transition-fast);
+}
+
+.finding-card:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.finding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.finding-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+  flex: 1;
+}
+
+.severity-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.severity-critical {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.severity-high {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.severity-medium {
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+}
+
+.severity-low {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.finding-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.meta-item {
   font-size: 0.85rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.finding-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+
+.resolve-btn {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+.empty-findings {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 0.5rem;
 }
 </style>
+

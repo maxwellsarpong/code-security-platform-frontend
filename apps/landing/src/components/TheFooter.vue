@@ -14,9 +14,9 @@
       <div class="footer-links">
         <div class="col">
           <h4>Product</h4>
-          <a href="#features">Features</a>
-          <a href="#billing">Pricing</a>
-          <a href="/dashboard">Dashboard</a>
+          <router-link to="/#features">Features</router-link>
+          <router-link to="/checkout">Pricing</router-link>
+          <router-link to="/login">Dashboard</router-link>
         </div>
         <div class="col">
           <h4>Company</h4>
@@ -44,13 +44,25 @@
   background: var(--bg-card);
   border-top: 1px solid var(--border);
   margin-top: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.2), transparent);
 }
 
 .footer-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: 2rem;
-  padding: 3rem 1.5rem 2rem;
+  gap: 3rem;
+  padding: 4rem 1.5rem 2.5rem;
   justify-content: space-between;
 }
 
@@ -58,9 +70,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.15rem;
   color: var(--text);
   text-decoration: none;
+  transition: all 0.3s ease;
 }
 
 .footer-brand .logo:hover {
@@ -70,47 +84,53 @@
 
 .logo-icon {
   color: var(--accent);
+  font-size: 1.25rem;
 }
 
 .tagline {
   color: var(--text-muted);
   font-size: 0.9rem;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+  line-height: 1.5;
 }
 
 .footer-links {
   display: flex;
-  gap: 3rem;
+  gap: 4rem;
   flex-wrap: wrap;
-}
-
-.col h4 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 0.75rem;
 }
 
 .col {
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+}
+
+.col h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin-bottom: 0.5rem;
 }
 
 .col a {
   color: var(--text-muted);
   font-size: 0.95rem;
-  margin-bottom: 0.4rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .col a:hover {
   color: var(--accent);
+  transform: translateX(4px);
 }
 
 .footer-bottom {
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 1.5rem;
   border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .footer-bottom span {

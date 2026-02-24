@@ -7,3 +7,6 @@ dist
 !.env.example
 *.log
 .vite
+.zenflow
+.zencoder
+.continue

@@ -67,55 +67,66 @@
 .settings-view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  max-width: 640px;
+  gap: 2rem;
+  max-width: 720px;
 }
 
 .settings-card {
-  padding: 1.25rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .field label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .input {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  background: var(--bg-card);
   color: var(--text);
   font-size: 0.95rem;
-  max-width: 320px;
+  max-width: 100%;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .input[readonly] {
-  opacity: 0.8;
+  opacity: 0.7;
+  background: var(--bg-elevated);
+  cursor: not-allowed;
 }
 
 .field-hint {
@@ -124,7 +135,7 @@
 }
 
 .text-muted {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
@@ -133,15 +144,28 @@
   border: none;
   color: var(--accent);
   font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   padding: 0;
+  transition: color var(--transition-fast);
 }
 
 .btn-link:hover {
-  text-decoration: underline;
+  color: var(--accent-hover);
+}
+
+.danger-zone {
+  border-color: var(--critical);
+  background: linear-gradient(135deg, var(--critical-light) 0%, transparent 100%);
+}
+
+.danger-zone .card-title {
+  color: var(--critical);
 }
 
 .danger-zone .btn:hover {
-  background: rgba(248, 113, 113, 0.1);
+  background: var(--critical);
+  color: var(--bg);
+  border-color: var(--critical);
 }
 </style>

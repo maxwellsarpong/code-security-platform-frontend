@@ -7,6 +7,8 @@
     "apps/dashboard"
   ],
   "scripts": {
+    "dev": "npm run dev:both",
+    "dev:both": "concurrently \"npm run dev:landing\" \"npm run dev:dashboard\"",
     "dev:landing": "npm run dev --workspace=apps/landing",
     "dev:dashboard": "npm run dev --workspace=apps/dashboard",
     "build:landing": "npm run build --workspace=apps/landing",
@@ -15,5 +17,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

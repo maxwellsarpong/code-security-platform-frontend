@@ -88,64 +88,79 @@ const usage = [
 .billing-view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .billing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
 }
 
 .billing-card {
-  padding: 1.25rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.billing-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
 }
 
 .card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 1.25rem 0;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .plan-name {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: var(--text);
 }
 
 .plan-price {
   display: flex;
   align-items: baseline;
-  gap: 0.2rem;
-  margin-bottom: 0.5rem;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
 }
 
 .currency {
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 1.25rem;
 }
 
 .amount {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   font-family: var(--font-mono);
+  color: var(--accent);
 }
 
 .period {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-left: 0.25rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-left: 0.5rem;
 }
 
 .plan-meta {
   font-size: 0.9rem;
   color: var(--text-muted);
+  margin-bottom: 1rem;
 }
 
 .usage-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .usage-row {
@@ -153,35 +168,48 @@ const usage = [
   justify-content: space-between;
   align-items: center;
   font-size: 0.95rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.usage-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .usage-label {
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .usage-value {
   font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .usage-limit {
   color: var(--text-muted);
-  font-weight: normal;
+  font-weight: 400;
+  margin-left: 0.25rem;
 }
 
 .payment-section .payment-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .payment-detail {
   font-family: var(--font-mono);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .text-muted {
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
 }
 
 .btn-link {
@@ -189,11 +217,13 @@ const usage = [
   border: none;
   color: var(--accent);
   font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   padding: 0;
+  transition: color var(--transition-fast);
 }
 
 .btn-link:hover {
-  text-decoration: underline;
+  color: var(--accent-hover);
 }
 </style>
