@@ -9,8 +9,8 @@ export function useDashboard() {
    * Both apps run on the same port now, dashboard is at /app path
    */
   const goToDashboard = () => {
-    // Redirect to /app on the same server
-    window.location.href = '/app'
+    // Redirect to /app/ on the same server (must have trailing slash for Vite base)
+    window.location.href = '/app/'
   }
 
   /**

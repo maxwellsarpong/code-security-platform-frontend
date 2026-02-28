@@ -9,7 +9,7 @@ const planSlug = computed(() => route.query.plan || 'team')
 
 const plans = {
   starter: { name: 'Starter', price: 0, period: 'forever' },
-  team: { name: 'Team', price: 29, period: 'per developer / month' },
+  team: { name: 'Team', price: 15, period: 'per developer / month' },
   enterprise: { name: 'Enterprise', price: null, period: 'Custom' },
 }
 

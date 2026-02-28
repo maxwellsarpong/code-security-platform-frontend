@@ -3,8 +3,6 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth, PERMISSIONS } from '../composables/useAuth'
 import { useLanding } from '../composables/useLanding'
-import TenantSwitcher from '../components/TenantSwitcher.vue'
-import RoleSwitcher from '../components/RoleSwitcher.vue'
 
 const route = useRoute()
 const { isSuperAdmin, can, logout } = useAuth()
@@ -65,16 +63,20 @@ const handleLogout = () => {
       </nav>
       <div class="sidebar-footer">
         <a href="#" class="back-link" @click.prevent="goToLanding">← Landing</a>
-        <button type="button" class="logout-btn" @click="handleLogout" title="Logout">🚪 Logout</button>
+        <button type="button" class="logout-btn" @click="handleLogout" title="Logout">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
     <div class="main-wrap">
       <header class="header">
         <h1 class="page-title">{{ route.meta.title || 'Dashboard' }}</h1>
         <div class="header-actions">
-          <RoleSwitcher />
-          <TenantSwitcher />
-          <button type="button" class="btn-icon" aria-label="Notifications">🔔</button>
         </div>
       </header>
       <main class="content">

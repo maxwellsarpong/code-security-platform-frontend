@@ -67,12 +67,56 @@ export class DashboardAuthService {
       }
 
       const data = await response.json()
-      if (data.user) {
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+      const user = data.user || data
+      if (user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user))
       }
-      return data.user
+      return user
     } catch (error) {
       console.error('Profile fetch error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update user profile settings using API
+   */
+  static async updateUserProfile(payload) {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No authentication token')
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/user/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          this.logout()
+          throw new Error('Unauthorized - please login again')
+        }
+
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.detail || 'Failed to update profile')
+      }
+
+      const data = await response.json()
+      const updatedUser = data.user || data
+      if (updatedUser) {
+        const currentUser = this.getUser() || {}
+        localStorage.setItem(USER_KEY, JSON.stringify({ ...currentUser, ...updatedUser }))
+      }
+      return updatedUser
+    } catch (error) {
+      console.error('Profile update error:', error)
       throw error
     }
   }
