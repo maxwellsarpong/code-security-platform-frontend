@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
+import BillingService from '../services/billingService'
 import StatCard from '../components/modern/StatCard.vue'
 import LineChart from '../components/charts/LineChart.vue'
 import DoughnutChart from '../components/charts/DoughnutChart.vue'
@@ -9,6 +10,7 @@ import ScanService from '../services/scanService'
 const { currentTenantName } = useAuth()
 
 const scans = ref([])
+const usageData = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
 
@@ -90,20 +92,28 @@ async function loadData() {
   try {
     isLoading.value = true
     error.value = null
-    const result = await ScanService.getScans()
+    
+    // Fetch both scans and usage data in parallel
+    const [scansResult, usageResult] = await Promise.all([
+      ScanService.getScans().catch(() => []),
+      BillingService.getUserUsage().catch(() => null)
+    ])
+    
+    usageData.value = usageResult
     
     // If we have no data, use mock data to "enhance" the dashboard experience
-    if (!result || result.length === 0) {
+    if (!scansResult || scansResult.length === 0) {
       scans.value = ScanService.getMockScans()
     } else {
-      scans.value = result
+      scans.value = scansResult
     }
+    
+    error.value = null // Hide error if we show mock or loaded successfully
   } catch (err) {
-    error.value = 'Failed to load dashboard data. Please try again later.'
-    console.error(err)
+    console.error('Overview load error:', err)
     // Fallback to mock on error too, to keep it looking "enhanced"
     scans.value = ScanService.getMockScans()
-    error.value = null // Hide error if we show mock
+    error.value = null 
   } finally {
     isLoading.value = false
   }
@@ -125,6 +135,13 @@ onMounted(loadData)
     </div>
 
     <template v-else>
+    <!-- Quota usage bar -->
+    <div v-if="usageData" class="tenant-context">
+      <span class="context-icon">💡</span>
+      You've used <strong>{{ usageData.current_month_usage || 0 }}</strong> 
+      of your <strong>{{ usageData.scan_quota_limit || 0 }}</strong> monthly scans.
+      <router-link to="/billing" class="link" style="margin-left: 0.5rem">Manage Billing</router-link>
+    </div>
     <div class="stats-grid">
       <StatCard 
         v-for="s in stats" 

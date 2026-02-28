@@ -2,11 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import BillingService from '../services/billingService'
+import DashboardAuthService from '../services/authService'
 
 const { currentUser } = useAuth()
 
 // ── State ──────────────────────────────────────────────────────────────────
 const usageData    = ref(null)
+const userProfile  = ref(null)
 const invoices     = ref([])
 const isLoading    = ref(true)
 const error        = ref(null)
@@ -21,7 +23,7 @@ const plans = [
     name: 'Starter',
     price: 0,
     scanQuota: 50,
-    features: ['50 scans / month', '1 repository', 'Standard support', 'Email alerts'],
+    features: ['2 Scans', 'Basic SAST & secrets', 'Community Support'],
     recommended: false,
     color: 'var(--text-muted)'
   },
@@ -29,7 +31,7 @@ const plans = [
     name: 'Team',
     price: 15,
     scanQuota: 500,
-    features: ['500 scans / month', 'Up to 10 repos', 'Priority support', 'Jira & Slack integration', 'Advanced analytics'],
+    features: ['500 scans', 'Full SAST, secrets, SCA', 'Compliance & policy engine', 'Jira & Slack integration'],
     recommended: true,
     color: 'var(--accent)'
   },
@@ -37,7 +39,7 @@ const plans = [
     name: 'Enterprise',
     price: 'Custom',
     scanQuota: -1,
-    features: ['Unlimited scans', 'Unlimited repos', '24/7 dedicated support', 'Custom integrations', 'SLA guarantees', 'SSO'],
+    features: ['Unlimited scans', 'Unlimited repos', '24/7 dedicated support', 'Jira & Slack integration', 'Custom integrations'],
     recommended: false,
     color: '#a78bfa'
   }
@@ -46,8 +48,13 @@ const plans = [
 // ── Derived plan info from API ─────────────────────────────────────────────
 const currentPlan = computed(() => {
   const raw = usageData.value
-  if (!raw) return { name: '—', price: 0 }
-  const planName = raw.plan || raw.subscription_plan || 'Starter'
+  const user = userProfile.value
+  
+  if (!raw && !user) return { name: '—', price: 0 }
+  
+  // Prioritize plan from user profile as requested, then fallout to usage data
+  const planName = user?.plan || raw?.plan || raw?.subscription_plan || 'Starter'
+  
   return plans.find(p => p.name.toLowerCase() === planName.toLowerCase()) || {
     name: planName, price: 0, features: [], recommended: false
   }
@@ -100,16 +107,17 @@ const usageMetrics = computed(() => {
 
 const planMeta = computed(() => {
   const raw = usageData.value || {}
+  const user = userProfile.value || {}
   const quota = raw.scan_quota_limit ?? raw.scan_limit ?? 1000
   const used = raw.current_month_usage ?? raw.scans_used ?? 0
   
   return {
-    plan: raw.plan || raw.subscription_plan || 'Starter',
+    plan: (user.plan || raw.plan || raw.subscription_plan || 'Starter').replace(/^\w/, c => c.toUpperCase()),
     quota: quota === -1 ? 'Unlimited' : quota,
     used: used,
     remaining: quota === -1 ? null : Math.max(0, quota - used),
     resetDate: raw.reset_date ?? 'Next Month',
-    userId: raw.user_id ?? currentUser.value?.id ?? null,
+    userId: user.id || raw.user_id || currentUser.value?.id || null,
   }
 })
 
@@ -119,14 +127,29 @@ async function loadBillingData() {
   error.value     = null
 
   try {
-    const data = await BillingService.getUserUsage()
-    // The API returns the summary object directly, possibly with a 'usage' array history
-    usageData.value = data
+    // Fetch usage and profile in parallel
+    const [usage, profile] = await Promise.all([
+      BillingService.getUserUsage().catch(err => {
+        console.warn('Usage fetch error:', err)
+        return null
+      }),
+      DashboardAuthService.fetchUserProfile().catch(err => {
+        console.warn('Profile fetch error:', err)
+        return null
+      })
+    ])
+    
+    usageData.value = usage
+    userProfile.value = profile
+
+    if (!usage && !profile) {
+      throw new Error('Failed to load billing data.')
+    }
 
     // Also try to load invoices (graceful fail)
     try {
-      // Use 'me' if no tenant_id is explicitly provided in the usage response
-      const invData   = await BillingService.getInvoices(data.tenant_id ?? 'me')
+      const tenantId = usage?.tenant_id ?? 'me'
+      const invData   = await BillingService.getInvoices(tenantId)
       invoices.value  = Array.isArray(invData) ? invData : (invData.invoices ?? [])
     } catch (_) {
       invoices.value = []

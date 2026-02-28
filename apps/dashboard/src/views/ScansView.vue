@@ -319,7 +319,6 @@ const resolveFinding = async (finding) => {
         <table>
           <thead>
             <tr>
-              <th>Scan ID</th>
               <th>Repository URL</th>
               <th>Risk Score</th>
               <th>Status</th>
@@ -328,7 +327,6 @@ const resolveFinding = async (finding) => {
           </thead>
           <tbody>
             <tr v-for="s in paginatedScans" :key="s.id">
-              <td><code class="code">{{ s.id.substring(0, 8) }}</code></td>
               <td class="repo-url">{{ s.repo_url }}</td>
               <td>
                 <span class="risk-score">{{ formatRiskScore(s.risk_score) }}</span>
@@ -396,10 +394,6 @@ const resolveFinding = async (finding) => {
           <div class="info-row">
             <span class="info-label">Repository:</span>
             <code class="code">{{ selectedScan.repo_url }}</code>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Scan ID:</span>
-            <code class="code">{{ selectedScan.id }}</code>
           </div>
           <div class="info-row">
             <span class="info-label">Risk Score:</span>

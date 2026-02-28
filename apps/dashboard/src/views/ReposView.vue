@@ -1,11 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import DashboardAuthService from '../services/authService'
+import BillingService from '../services/billingService'
 import Toast from '../components/Toast.vue'
 
 const repos = ref([])
+const usageData = ref(null)
 const isLoading = ref(false)
 const error = ref(null)
+const searchQuery = ref('')
 const resolvingFindings = ref(new Set()) // Track which findings are being resolved
 
 // Toast notification
@@ -67,11 +70,16 @@ const fetchRepos = async () => {
   isLoading.value = true
   error.value = null
   try {
-    const response = await DashboardAuthService.request('/scans', {
-      method: 'GET'
-    })
-    if (!response.ok) throw new Error('Failed to fetch repositories data')
-    const scans = await response.json()
+    // Fetch repos and usage in parallel
+    const [scansRes, usageRes] = await Promise.all([
+      DashboardAuthService.request('/scans', { method: 'GET' }),
+      BillingService.getUserUsage().catch(() => null)
+    ])
+    
+    usageData.value = usageRes
+    
+    if (!scansRes.ok) throw new Error('Failed to fetch repositories data')
+    const scans = await scansRes.json()
     
     // Group scans by repo_url and get latest info for each
     const repoMap = {}
@@ -79,11 +87,11 @@ const fetchRepos = async () => {
       if (!repoMap[scan.repo_url]) {
         repoMap[scan.repo_url] = {
           repo_url: scan.repo_url,
-          provider: 'GitHub', // Default to GitHub as per current UI
+          provider: 'GitHub', 
           lastScan: scan.created_at || 'Recently',
           riskScore: scan.risk_score || 0,
           issues: scan.findings ? scan.findings.length : 0,
-          findings: scan.findings || [] // Store findings for resolving
+          findings: scan.findings || [] 
         }
       }
     })
@@ -99,12 +107,21 @@ const fetchRepos = async () => {
 
 onMounted(fetchRepos)
 
-const totalPages = computed(() => Math.ceil(repos.value.length / ITEMS_PER_PAGE))
+const filteredRepos = computed(() => {
+  if (!searchQuery.value) return repos.value
+  const query = searchQuery.value.toLowerCase()
+  return repos.value.filter(repo => {
+    const name = getRepoName(repo.repo_url).toLowerCase()
+    return name.includes(query)
+  })
+})
+
+const totalPages = computed(() => Math.ceil(filteredRepos.value.length / ITEMS_PER_PAGE))
 
 const paginatedRepos = computed(() => {
   const start = (currentPage.value - 1) * ITEMS_PER_PAGE
   const end = start + ITEMS_PER_PAGE
-  return repos.value.slice(start, end)
+  return filteredRepos.value.slice(start, end)
 })
 
 const changePage = (page) => {
@@ -114,22 +131,40 @@ const changePage = (page) => {
 }
 
 const resolveFinding = async (finding) => {
+  if (!finding.id) {
+    showToast('Unable to resolve finding: ID missing', 'error')
+    return
+  }
+  
   resolvingFindings.value.add(finding.id)
   try {
     const response = await DashboardAuthService.request(
       `/findings/${finding.id}/resolve`,
       { method: 'POST' }
     )
-    if (!response.ok) throw new Error('Failed to resolve finding')
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Failed to resolve finding' }))
+      throw new Error(errorData.detail || `Error: ${response.status}`)
+    }
+    
     showToast('Finding resolved successfully!', 'success')
+    
     // Remove resolved finding from the list
     if (selectedRepo.value && selectedRepo.value.findings) {
       selectedRepo.value.findings = selectedRepo.value.findings.filter(f => f.id !== finding.id)
       selectedRepo.value.issues = selectedRepo.value.findings.length
     }
+    
+    // Also update the main repos list to reflect the change
+    const repoIndex = repos.value.findIndex(r => r.repo_url === selectedRepo.value?.repo_url)
+    if (repoIndex !== -1) {
+      repos.value[repoIndex].issues = selectedRepo.value.findings.length
+      repos.value[repoIndex].findings = selectedRepo.value.findings
+    }
   } catch (err) {
     console.error('Error resolving finding:', err)
-    showToast('Failed to resolve finding', 'error')
+    showToast(err.message || 'Failed to resolve finding', 'error')
   } finally {
     resolvingFindings.value.delete(finding.id)
   }
@@ -138,9 +173,27 @@ const resolveFinding = async (finding) => {
 
 <template>
   <div class="repos-view">
+    <!-- Quota usage bar -->
+    <div v-if="usageData" class="tenant-context">
+      <span class="context-icon">💡</span>
+      You've used <strong>{{ usageData.current_month_usage || 0 }}</strong> 
+      of your <strong>{{ usageData.scan_quota_limit || 0 }}</strong> monthly scans.
+      <router-link to="/billing" class="link" style="margin-left: 0.5rem">Manage Billing</router-link>
+    </div>
+
     <div class="view-header">
-      <p class="view-desc">Connected repositories and their last scan status.</p>
-      <button type="button" class="btn btn-primary">Connect repository</button>
+      <div class="header-main">
+        <p class="view-desc">Connected repositories and their last scan status.</p>
+      </div>
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input 
+          v-model="searchQuery"
+          type="text" 
+          placeholder="Search repositories..." 
+          class="search-input"
+        />
+      </div>
     </div>
 
     <div class="card table-card">
@@ -282,10 +335,9 @@ const resolveFinding = async (finding) => {
 
     <!-- Toast Notification -->
     <Toast 
-      v-if="toast.show"
+      v-model:show="toast.show"
       :variant="toast.variant"
       :message="toast.message"
-      @close="toast.show = false"
     />
   </div>
 </template>
@@ -301,8 +353,50 @@ const resolveFinding = async (finding) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-main {
+  flex: 1;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1), var(--shadow-md);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: color var(--transition-base);
+}
+
+.search-wrapper:focus-within .search-icon {
+  color: var(--accent);
 }
 
 .view-desc {
