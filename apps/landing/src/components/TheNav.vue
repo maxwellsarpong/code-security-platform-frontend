@@ -2,15 +2,14 @@
 import { ref, computed } from 'vue'
 import { useTheme } from '../composables/useTheme'
 import { useDashboard } from '../composables/useDashboard'
-import authService from '../services/authService'
+import { useAuthLanding } from '../composables/useAuthLanding'
 
 const menuOpen = ref(false)
 const { theme, toggleTheme } = useTheme()
 const { goToDashboard } = useDashboard()
+const { logout, isAuthenticated, user } = useAuthLanding()
 
 // Authentication state
-const isAuthenticated = computed(() => authService.isAuthenticated())
-const user = computed(() => authService.getUser())
 const userName = computed(() => user.value?.name || user.value?.email?.split('@')[0] || 'User')
 
 const scrollToSection = (sectionId) => {
@@ -23,9 +22,9 @@ const scrollToSection = (sectionId) => {
 
 const handleLogout = () => {
   if (confirm('Are you sure you want to log out?')) {
-    authService.logout()
-    // Reload page to reset state
-    window.location.reload()
+    logout()
+    // Redirect to login with success parameter
+    window.location.href = '/login?logout=success'
   }
 }
 </script>

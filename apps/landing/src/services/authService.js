@@ -61,12 +61,12 @@ export class AuthService {
       }
 
       const data = await response.json()
-      
+
       // Backend returns access_token, not token
       if (data.access_token) {
         localStorage.setItem(TOKEN_KEY, data.access_token)
       }
-      
+
       // Fetch user profile data after successful login
       try {
         const userProfile = await this.fetchUserProfile(data.access_token)
@@ -139,6 +139,9 @@ export class AuthService {
   static logout() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+
+    // Manually trigger storage event for other components in same tab
+    window.dispatchEvent(new Event('storage'))
   }
 
   /**

@@ -45,11 +45,14 @@ if (!state.currentTenant && state.tenants.length) {
 
 // Listen for cross-tab or cross-app changes to localStorage
 window.addEventListener('storage', (event) => {
-  if (event.key === 'auth_token' || event.key === 'auth_user') {
+  if (event.key === 'auth_token' || event.key === 'auth_user' || !event.key) {
     state.isAuthenticated = DashboardAuthService.isAuthenticated()
     const rawStoredUser = DashboardAuthService.getUser()
     if (rawStoredUser) {
       state.currentUser = normalizeUser(rawStoredUser)
+    } else {
+      state.currentUser = null
+      state.currentTenant = null
     }
   }
 })
@@ -129,7 +132,7 @@ export function useAuth() {
     state.isAuthenticated = false
 
     // Redirect to landing page login (same origin now)
-    window.location.href = '/login'
+    window.location.href = '/login?logout=success'
   }
 
   return {

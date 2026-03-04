@@ -37,6 +37,9 @@ export class DashboardAuthService {
   static logout() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+
+    // Manually trigger storage event for other components in same tab
+    window.dispatchEvent(new Event('storage'))
   }
 
   /**

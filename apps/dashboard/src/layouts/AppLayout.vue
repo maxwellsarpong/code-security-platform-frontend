@@ -1,11 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth, PERMISSIONS } from '../composables/useAuth'
 import { useLanding } from '../composables/useLanding'
 
 const route = useRoute()
-const { isSuperAdmin, can, logout } = useAuth()
+const { isSuperAdmin, can, logout, isAuthenticated } = useAuth()
 const { goToLanding } = useLanding()
 
 const allNavItems = [
@@ -31,6 +31,13 @@ const handleLogout = () => {
     logout()
   }
 }
+
+// Redirect if logged out (e.g. from another tab or session expiry)
+watch(isAuthenticated, (val) => {
+  if (!val) {
+    window.location.href = '/login?logout=success'
+  }
+})
 </script>
 
 <template>

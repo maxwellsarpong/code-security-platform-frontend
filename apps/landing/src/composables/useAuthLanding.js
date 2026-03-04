@@ -12,6 +12,13 @@ export function useAuthLanding() {
   const user = ref(AuthService.getUser())
   const isAuthenticated = computed(() => AuthService.isAuthenticated())
 
+  // Handle storage events for logout from other tabs/apps
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'auth_token' || event.key === 'auth_user' || !event.key) {
+      user.value = AuthService.getUser()
+    }
+  })
+
   /**
    * Login with email and password
    */

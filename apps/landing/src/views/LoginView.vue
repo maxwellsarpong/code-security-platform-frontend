@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useDashboard } from '../composables/useDashboard'
 import { useAuthLanding } from '../composables/useAuthLanding'
 import authService from '../services/authService'
+import Toast from '../components/Toast.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { goToDashboard } = useDashboard()
 const { login, register, loading, error, clearError } = useAuthLanding()
 
@@ -17,10 +19,36 @@ const form = ref({
   tenant_name: '',
 })
 
+// Toast notification
+const toast = ref({
+  show: false,
+  variant: 'success',
+  message: ''
+})
+
+const showToast = (message, variant = 'success') => {
+  toast.value = {
+    show: true,
+    variant,
+    message
+  }
+}
+
 onMounted(() => {
   // If user is already authenticated, redirect to dashboard
   if (authService.isAuthenticated()) {
     goToDashboard()
+    return
+  }
+
+  // Check for logout success
+  if (route.query.logout === 'success') {
+    showToast('Logged out successfully', 'success')
+    
+    // Clean up URL without reload
+    const newQuery = { ...route.query }
+    delete newQuery.logout
+    router.replace({ query: newQuery })
   }
 })
 
@@ -113,6 +141,13 @@ function toggleMode() {
         </div>
       </div>
     </main>
+
+    <!-- Toast Notification -->
+    <Toast 
+      v-model:show="toast.show"
+      :variant="toast.variant"
+      :message="toast.message"
+    />
   </div>
 </template>
 
