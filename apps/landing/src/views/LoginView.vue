@@ -115,7 +115,10 @@ function toggleMode() {
               <input v-model="form.email" type="email" placeholder="you@company.com" required class="input" :disabled="loading" />
             </div>
             <div class="field">
-              <label>Password</label>
+              <div class="field-header">
+                <label>Password</label>
+                <router-link to="/recover" class="forgot-link" v-if="mode === 'signin'">Forgot password?</router-link>
+              </div>
               <input v-model="form.password" type="password" placeholder="••••••••" required class="input" :disabled="loading" />
             </div>
             <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
@@ -239,6 +242,29 @@ function toggleMode() {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-bottom: 0.35rem;
+}
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.field-header label {
+  margin-bottom: 0;
+}
+
+.forgot-link {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
 }
 
 .input {
