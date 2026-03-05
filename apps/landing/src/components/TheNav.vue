@@ -7,7 +7,7 @@ import { useAuthLanding } from '../composables/useAuthLanding'
 const menuOpen = ref(false)
 const { theme, toggleTheme } = useTheme()
 const { goToDashboard } = useDashboard()
-const { logout, isAuthenticated, user } = useAuthLanding()
+const { logout, isAuthenticated, user, isLoggingOut } = useAuthLanding()
 
 // Authentication state
 const userName = computed(() => user.value?.name || user.value?.email?.split('@')[0] || 'User')
@@ -20,10 +20,10 @@ const scrollToSection = (sectionId) => {
   menuOpen.value = false // Close mobile menu after clicking
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   if (confirm('Are you sure you want to log out?')) {
-    logout()
-    // Redirect to login with success parameter
+    await logout()
+    // Redirect is already handled if needed, or we do it here synchronously after the state is cleared
     window.location.href = '/login?logout=success'
   }
 }
@@ -49,15 +49,17 @@ const handleLogout = () => {
         </button>
         
         <!-- Authenticated User UI -->
-        <div v-if="isAuthenticated" class="user-section">
+        <div v-if="isAuthenticated || isLoggingOut" class="user-section">
           <div class="user-avatar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
-          <button @click="goToDashboard" class="btn btn-primary">Open Dashboard</button>
-          <button @click="handleLogout" class="btn btn-logout">Logout</button>
+          <button @click="goToDashboard" class="btn btn-primary" :disabled="isLoggingOut">Open Dashboard</button>
+          <button @click="handleLogout" class="btn btn-logout" :disabled="isLoggingOut">
+            {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
+          </button>
         </div>
         
         <!-- Unauthenticated User UI -->

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import AuthService from '../services/authService'
 
 const email = ref('')
 const loading = ref(false)
@@ -11,11 +12,10 @@ async function submitRecovery() {
   loading.value = true
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await AuthService.requestPasswordRecovery(email.value)
     success.value = true
   } catch (err) {
-    error.value = 'Failed to send recovery email. Please try again.'
+    error.value = err.message || 'Failed to send recovery email. Please try again.'
   } finally {
     loading.value = false
   }

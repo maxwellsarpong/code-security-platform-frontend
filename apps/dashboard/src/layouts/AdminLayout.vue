@@ -3,16 +3,24 @@ import { useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
 const route = useRoute()
-const { isAdmin } = useAuth()
+const { isAdmin, logout, isLoggingOut } = useAuth()
 
 const navItems = [
   { path: '/admin', name: 'Overview', icon: '◉' },
-  { path: '/admin/tenants', name: 'Tenants', icon: '◈' },
+  { path: '/admin/users', name: 'Users', icon: '◇' },
+  { path: '/admin/scans', name: 'Platform Scans', icon: '🔍' },
+  { path: '/admin/health', name: 'Platform Health', icon: '⚡' },
 ]
 
 const isActive = (path) => {
   if (path === '/admin') return route.path === '/admin'
   return route.path.startsWith(path)
+}
+
+const handleLogout = async () => {
+  if (confirm('Are you sure you want to log out?')) {
+    await logout()
+  }
 }
 </script>
 
@@ -38,6 +46,20 @@ const isActive = (path) => {
       </nav>
       <div class="sidebar-footer">
         <router-link to="/" class="back-link">← Tenant dashboard</router-link>
+        <button 
+          type="button" 
+          class="logout-btn" 
+          @click="handleLogout" 
+          title="Logout"
+          :disabled="isLoggingOut"
+        >
+          <svg v-if="!isLoggingOut" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>{{ isLoggingOut ? 'Logging out...' : 'Logout' }}</span>
+        </button>
       </div>
     </aside>
     <div class="main-wrap">
@@ -254,6 +276,36 @@ const isActive = (path) => {
 
 .back-link:hover {
   color: var(--accent);
+}
+
+.logout-btn {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: inherit;
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 0.75rem;
+}
+
+.logout-btn:hover:not(:disabled) {
+  color: #ff4757;
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.05);
+}
+
+.logout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .main-wrap {

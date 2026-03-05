@@ -36,6 +36,7 @@ const state = reactive({
     { id: 't-4', name: 'Umbrella Labs', slug: 'umbrella-labs', plan: 'Team', status: 'suspended', usersCount: 12, createdAt: '2024-08-10' },
   ],
   isAuthenticated: DashboardAuthService.isAuthenticated(),
+  isLoggingOut: false
 })
 
 // Initialize current tenant to first active tenant
@@ -45,6 +46,9 @@ if (!state.currentTenant && state.tenants.length) {
 
 // Listen for cross-tab or cross-app changes to localStorage
 window.addEventListener('storage', (event) => {
+  // Skip if a manual logout is already in progress - it will handle its own cleanup
+  if (state.isLoggingOut) return
+
   if (event.key === 'auth_token' || event.key === 'auth_user' || !event.key) {
     state.isAuthenticated = DashboardAuthService.isAuthenticated()
     const rawStoredUser = DashboardAuthService.getUser()
@@ -122,7 +126,12 @@ export function useAuth() {
     state.isAuthenticated = true
   }
 
-  function logout() {
+  async function logout() {
+    state.isLoggingOut = true
+
+    // Artificial delay to allow UI to show feedback and avoid jarring jump
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
     // Clear localStorage JWT token
     DashboardAuthService.logout()
 
@@ -130,9 +139,11 @@ export function useAuth() {
     state.currentUser = null
     state.currentTenant = null
     state.isAuthenticated = false
+    // Note: we leave isLoggingOut true until the page redirects to landing
 
-    // Redirect to landing page login (same origin now)
-    window.location.href = '/login?logout=success'
+    // Redirect to landing page login using environment variable to avoid hardcoded ports
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    window.location.href = `${landingUrl}/login?logout=success`
   }
 
   return {
@@ -141,6 +152,7 @@ export function useAuth() {
     currentTenant: computed(() => state.currentTenant),
     tenants: computed(() => state.tenants),
     isAuthenticated: computed(() => state.isAuthenticated),
+    isLoggingOut: computed(() => state.isLoggingOut),
 
     // Role checks
     isSuperAdmin,

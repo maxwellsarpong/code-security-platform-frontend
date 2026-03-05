@@ -9,7 +9,7 @@ const routes = [
   {
     path: '/',
     component: AppLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true },
     children: [
       {
         path: '',
@@ -79,12 +79,30 @@ const routes = [
         }
       },
       {
-        path: 'tenants',
-        name: 'admin-tenants',
-        component: () => import('../views/admin/TenantListView.vue'),
+        path: 'scans',
+        name: 'admin-scans',
+        component: () => import('../views/admin/PlatformScansView.vue'),
         meta: {
-          title: 'Tenants',
+          title: 'Platform Scans',
           requiresPermission: PERMISSIONS.MANAGE_TENANTS
+        }
+      },
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: () => import('../views/admin/AdminUsersView.vue'),
+        meta: {
+          title: 'User Management',
+          requiresPermission: PERMISSIONS.VIEW_ADMIN_PANEL
+        }
+      },
+      {
+        path: 'health',
+        name: 'admin-health',
+        component: () => import('../views/admin/SystemHealthView.vue'),
+        meta: {
+          title: 'Platform Health',
+          requiresPermission: PERMISSIONS.VIEW_SYSTEM_METRICS
         }
       },
     ],
@@ -115,8 +133,10 @@ router.beforeEach((to, from) => {
 
   // If route requires auth and user is not authenticated
   if (requiresAuth && !isAuthenticated) {
-    // Redirect to landing page login
-    window.location.href = 'http://localhost:5173/login'
+    // Redirect to landing page login, preserving query params like logout=success
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    const queryStr = window.location.search
+    window.location.href = `${landingUrl}/login${queryStr}`
     return false
   }
 

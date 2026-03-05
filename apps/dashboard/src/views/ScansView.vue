@@ -44,7 +44,7 @@ const currentPage = ref(1)
 const filteredScans = computed(() => {
   if (filter.value === 'completed') return scans.value.filter((s) => s.status === 'completed')
   if (filter.value === 'failed') return scans.value.filter((s) => s.status === 'failed')
-  if (filter.value === 'pending') return scans.value.filter((s) => s.status === 'pending')
+  if (filter.value === 'running') return scans.value.filter((s) => s.status === 'pending')
   return scans.value
 })
 
@@ -234,7 +234,7 @@ const resolveFinding = async (finding) => {
     <div class="view-header">
       <div class="filter-tabs">
         <button
-          v-for="opt in ['all', 'completed', 'pending', 'failed']"
+          v-for="opt in ['all', 'completed', 'running', 'failed']"
           :key="opt"
           type="button"
           class="tab"
@@ -333,7 +333,7 @@ const resolveFinding = async (finding) => {
               </td>
               <td>
                 <span class="badge" :class="s.status === 'completed' ? 'badge--success' : s.status === 'failed' ? 'badge--critical' : 'badge--muted'">
-                  {{ s.status }}
+                  {{ s.status === 'pending' ? 'running' : s.status }}
                 </span>
               </td>
               <td>
@@ -402,7 +402,7 @@ const resolveFinding = async (finding) => {
           <div class="info-row">
             <span class="info-label">Status:</span>
             <span class="badge" :class="selectedScan.status === 'completed' ? 'badge--success' : 'badge--critical'">
-              {{ selectedScan.status }}
+              {{ selectedScan.status === 'pending' ? 'running' : selectedScan.status }}
             </span>
           </div>
         </div>

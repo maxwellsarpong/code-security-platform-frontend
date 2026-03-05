@@ -8,6 +8,7 @@ import AuthService from '../services/authService'
 
 export function useAuthLanding() {
   const loading = ref(false)
+  const isLoggingOut = ref(false)
   const error = ref('')
   const user = ref(AuthService.getUser())
   const isAuthenticated = computed(() => AuthService.isAuthenticated())
@@ -60,10 +61,16 @@ export function useAuthLanding() {
   /**
    * Logout
    */
-  function logout() {
+  async function logout() {
+    isLoggingOut.value = true
+
+    // Artificial delay for feedback
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
     AuthService.logout()
     user.value = null
     error.value = ''
+    // Keep isLoggingOut true until redirect
   }
 
   /**
@@ -78,6 +85,7 @@ export function useAuthLanding() {
     error,
     user,
     isAuthenticated,
+    isLoggingOut,
     login,
     register,
     logout,

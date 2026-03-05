@@ -4,7 +4,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDashboard } from '../composables/useDashboard'
 import { useAuthLanding } from '../composables/useAuthLanding'
 import authService from '../services/authService'
-import Toast from '../components/Toast.vue'
+import { useToast } from '../composables/useToast'
+
+const { showToast } = useToast()
 
 const router = useRouter()
 const route = useRoute()
@@ -19,36 +21,31 @@ const form = ref({
   tenant_name: '',
 })
 
-// Toast notification
-const toast = ref({
-  show: false,
-  variant: 'success',
-  message: ''
-})
-
-const showToast = (message, variant = 'success') => {
-  toast.value = {
-    show: true,
-    variant,
-    message
-  }
-}
-
 onMounted(() => {
-  // If user is already authenticated, redirect to dashboard
+  // If we arrived with a logout=success parameter, ensure the local origin's session is ALSO cleared
+  // This solves cross-origin desync where 5174 is cleared but 5173 still has the token
+  if (route.query.logout === 'success') {
+    authService.logout()
+    // We continue execution to show the toast
+  }
+
+  // If user is already authenticated (and not logging out), redirect to dashboard
   if (authService.isAuthenticated()) {
     goToDashboard()
     return
   }
 
-  // Check for logout success
+  // Check for logout success feedback
   if (route.query.logout === 'success') {
-    showToast('Logged out successfully', 'success')
-    
-    // Clean up URL without reload
-    const newQuery = { ...route.query }
-    delete newQuery.logout
-    router.replace({ query: newQuery })
+    // Use a small delay to ensure the mount is stable and avoid blinking
+    setTimeout(() => {
+      showToast('Logged out successfully', 'success')
+      
+      // Clean up URL without reload or triggering Vue Router reactivity
+      const url = new URL(window.location.href)
+      url.searchParams.delete('logout')
+      window.history.replaceState({}, '', url.toString())
+    }, 100)
   }
 })
 
@@ -144,13 +141,6 @@ function toggleMode() {
         </div>
       </div>
     </main>
-
-    <!-- Toast Notification -->
-    <Toast 
-      v-model:show="toast.show"
-      :variant="toast.variant"
-      :message="toast.message"
-    />
   </div>
 </template>
 

@@ -37,9 +37,11 @@ export class DashboardAuthService {
   static logout() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
-
-    // Manually trigger storage event for other components in same tab
-    window.dispatchEvent(new Event('storage'))
+    // Note: we intentionally do NOT dispatch a storage event here.
+    // The storage event listener in useAuth.js would immediately set
+    // isAuthenticated=false, which fires the watcher and causes an
+    // instant redirect before the logout feedback delay completes.
+    // The redirect is handled explicitly in the logout() function.
   }
 
   /**

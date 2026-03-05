@@ -134,14 +134,40 @@ export class AuthService {
   }
 
   /**
+   * Request password recovery for a user
+   * @param {string} email
+   */
+  static async requestPasswordRecovery(email) {
+    try {
+      const response = await fetch(`${API_URL}/request-password-recovery`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || 'Failed to send password recovery request')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Password recovery request error:', error)
+      throw error
+    }
+  }
+
+  /**
    * Logout - clear stored credentials
    */
   static logout() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
-
-    // Manually trigger storage event for other components in same tab
-    window.dispatchEvent(new Event('storage'))
+    // Intentionally not dispatching storage event - that would immediately
+    // collapse the UI before the logout animation can complete.
   }
 
   /**

@@ -23,11 +23,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show', 'close'])
 
-const isVisible = ref(false)
 let timeoutId = null
 
 const close = () => {
-  isVisible.value = false
   emit('update:show', false)
   emit('close')
   if (timeoutId) {
@@ -37,8 +35,6 @@ const close = () => {
 }
 
 watch(() => props.show, (newValue) => {
-  isVisible.value = newValue
-  
   if (newValue && props.duration > 0) {
     // Clear any existing timeout
     if (timeoutId) {
@@ -48,18 +44,17 @@ watch(() => props.show, (newValue) => {
     timeoutId = setTimeout(() => {
       close()
     }, props.duration)
+  } else if (!newValue && timeoutId) {
+    clearTimeout(timeoutId)
+    timeoutId = null
   }
-})
-
-onMounted(() => {
-  isVisible.value = props.show
-})
+}, { immediate: true })
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="toast">
-      <div v-if="isVisible" class="toast-container">
+      <div v-if="show" class="toast-container">
         <div class="toast" :class="`toast--${variant}`">
           <div class="toast-icon">
             <!-- Success Icon -->

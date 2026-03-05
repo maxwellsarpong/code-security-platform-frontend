@@ -5,7 +5,7 @@ import { useAuth, PERMISSIONS } from '../composables/useAuth'
 import { useLanding } from '../composables/useLanding'
 
 const route = useRoute()
-const { isSuperAdmin, can, logout, isAuthenticated } = useAuth()
+const { isSuperAdmin, can, logout, isAuthenticated, isLoggingOut } = useAuth()
 const { goToLanding } = useLanding()
 
 const allNavItems = [
@@ -26,16 +26,18 @@ const isActive = (path) => {
   return route.path.startsWith(path)
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   if (confirm('Are you sure you want to log out?')) {
-    logout()
+    await logout()
   }
 }
 
 // Redirect if logged out (e.g. from another tab or session expiry)
 watch(isAuthenticated, (val) => {
-  if (!val) {
-    window.location.href = '/login?logout=success'
+  // Only redirect if it wasn't a manual logout (isLoggingOut handles that)
+  if (!val && !isLoggingOut.value) {
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    window.location.href = `${landingUrl}/login?logout=success`
   }
 })
 </script>
@@ -70,13 +72,20 @@ watch(isAuthenticated, (val) => {
       </nav>
       <div class="sidebar-footer">
         <a href="#" class="back-link" @click.prevent="goToLanding">← Landing</a>
-        <button type="button" class="logout-btn" @click="handleLogout" title="Logout">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button 
+          type="button" 
+          class="logout-btn" 
+          @click="handleLogout" 
+          title="Logout"
+          :disabled="isLoggingOut"
+        >
+          <svg v-if="!isLoggingOut" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
           </svg>
-          <span>Logout</span>
+          <span v-if="isLoggingOut" class="spinner-small"></span>
+          <span>{{ isLoggingOut ? 'Logging out...' : 'Logout' }}</span>
         </button>
       </div>
     </aside>
