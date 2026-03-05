@@ -31,7 +31,7 @@ onMounted(() => {
 
   // If user is already authenticated (and not logging out), redirect to dashboard
   if (authService.isAuthenticated()) {
-    goToDashboard()
+    goToDashboard(authService.getUser())
     return
   }
 
@@ -54,13 +54,12 @@ async function submitAuth() {
 
   try {
     if (mode.value === 'signin') {
-      await login(form.value.email, form.value.password)
+      const response = await login(form.value.email, form.value.password)
+      goToDashboard(response.user || response)
     } else {
-      await register(form.value.email, form.value.password, form.value.tenant_name)
+      const response = await register(form.value.email, form.value.password, form.value.tenant_name)
+      goToDashboard(response.user || response)
     }
-    
-    // Redirect to dashboard on success
-    goToDashboard()
   } catch (err) {
     // Error is already set in the composable
     console.error('Auth error:', err)

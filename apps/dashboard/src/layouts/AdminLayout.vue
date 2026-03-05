@@ -45,7 +45,6 @@ const handleLogout = async () => {
         </router-link>
       </nav>
       <div class="sidebar-footer">
-        <router-link to="/" class="back-link">← Tenant dashboard</router-link>
         <button 
           type="button" 
           class="logout-btn" 
@@ -67,7 +66,6 @@ const handleLogout = async () => {
         <h1 class="page-title">{{ route.meta.title || 'Admin' }}</h1>
         <div class="header-actions">
           <span class="user-badge">Super Admin</span>
-          <a href="/" class="btn btn-ghost btn-sm">Switch to tenant view</a>
         </div>
       </header>
       <main class="content">

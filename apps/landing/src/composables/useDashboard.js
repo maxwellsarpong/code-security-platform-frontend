@@ -8,9 +8,14 @@ export function useDashboard() {
    * Navigate to dashboard after authentication
    * Both apps run on the same port now, dashboard is at /app path
    */
-  const goToDashboard = () => {
-    // Redirect to /app/ on the same server (must have trailing slash for Vite base)
-    window.location.href = '/app/'
+  const goToDashboard = (user = null) => {
+    // Redirect based on user role if provided
+    if (user?.is_superuser) {
+      window.location.href = '/app/admin'
+    } else {
+      // Default to regular dashboard
+      window.location.href = '/app/'
+    }
   }
 
   /**

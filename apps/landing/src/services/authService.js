@@ -14,7 +14,7 @@ export class AuthService {
    */
   static async fetchUserProfile(token) {
     try {
-      const response = await fetch(`${API_URL}/user/me`, {
+      const response = await fetch(`${API_URL}/user/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -68,17 +68,17 @@ export class AuthService {
       }
 
       // Fetch user profile data after successful login
+      let userProfile = null
       try {
-        const userProfile = await this.fetchUserProfile(data.access_token)
+        userProfile = await this.fetchUserProfile(data.access_token)
         if (userProfile) {
           localStorage.setItem(USER_KEY, JSON.stringify(userProfile))
         }
       } catch (profileError) {
         console.warn('Could not fetch user profile:', profileError)
-        // Still allow login even if profile fetch fails
       }
 
-      return data
+      return { ...data, user: userProfile }
     } catch (error) {
       console.error('Login error:', error)
       throw error
@@ -116,17 +116,17 @@ export class AuthService {
       }
 
       // Fetch user profile data after successful registration
+      let userProfile = null
       try {
-        const userProfile = await this.fetchUserProfile(data.access_token)
+        userProfile = await this.fetchUserProfile(data.access_token)
         if (userProfile) {
           localStorage.setItem(USER_KEY, JSON.stringify(userProfile))
         }
       } catch (profileError) {
         console.warn('Could not fetch user profile:', profileError)
-        // Still allow registration even if profile fetch fails
       }
 
-      return data
+      return { ...data, user: userProfile }
     } catch (error) {
       console.error('Registration error:', error)
       throw error

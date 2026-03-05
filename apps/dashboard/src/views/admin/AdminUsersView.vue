@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import AdminService from '../../services/adminService'
 
 const users = ref([])
@@ -17,14 +17,34 @@ const stats = computed(() => ({
 const filteredUsers = computed(() => {
   return users.value.filter(user => {
     const matchesSearch = (user.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-                          (user.email || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          (user.tenant_name || '').toLowerCase().includes(searchQuery.value.toLowerCase())
+                          (user.email || '').toLowerCase().includes(searchQuery.value.toLowerCase())
     
     const role = (user.role || (user.is_superuser ? 'Admin' : 'Member')).toLowerCase()
     const matchesRole = roleFilter.value === 'all' || role === roleFilter.value.toLowerCase()
     
     return matchesSearch && matchesRole
   })
+})
+
+const ITEMS_PER_PAGE = 8
+const currentPage = ref(1)
+
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / ITEMS_PER_PAGE))
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * ITEMS_PER_PAGE
+  const end = start + ITEMS_PER_PAGE
+  return filteredUsers.value.slice(start, end)
+})
+
+function changePage(page) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+watch([searchQuery, roleFilter], () => {
+  currentPage.value = 1
 })
 
 async function fetchUsers() {
@@ -89,7 +109,7 @@ onMounted(() => {
     <div class="controls-bar card">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input v-model="searchQuery" type="text" placeholder="Search users by name, email, or tenant..." class="search-input" />
+        <input v-model="searchQuery" type="text" placeholder="Search users by name or email..." class="search-input" />
       </div>
       <div class="filter-box">
         <label>Role:</label>
@@ -111,22 +131,18 @@ onMounted(() => {
           <thead>
             <tr>
               <th>User</th>
-              <th>Tenant</th>
               <th>Role</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in filteredUsers" :key="user.id">
+            <tr v-for="user in paginatedUsers" :key="user.id">
               <td>
                 <div class="user-info">
                   <span class="user-name">{{ user.name || 'Anonymous' }}</span>
                   <span class="user-email">{{ user.email }}</span>
                 </div>
-              </td>
-              <td>
-                <span class="tenant-name">{{ user.tenant_name || user.tenant_slug || '—' }}</span>
               </td>
               <td>
                 <span class="role-badge" :class="user.is_superuser ? 'admin' : 'member'">
@@ -143,10 +159,46 @@ onMounted(() => {
               </td>
             </tr>
             <tr v-if="filteredUsers.length === 0 && !loading">
-              <td colspan="5" class="empty-state">No users found matching your search criteria.</td>
+              <td colspan="4" class="empty-state">No users found matching your search criteria.</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="pagination">
+        <button 
+          type="button" 
+          class="btn-icon" 
+          :disabled="currentPage === 1"
+          @click="changePage(currentPage - 1)"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="page-numbers">
+          <button 
+            v-for="p in totalPages" 
+            :key="p"
+            type="button"
+            class="page-num"
+            :class="{ active: currentPage === p }"
+            @click="changePage(p)"
+          >
+            {{ p }}
+          </button>
+        </div>
+        <button 
+          type="button" 
+          class="btn-icon" 
+          :disabled="currentPage === totalPages"
+          @click="changePage(currentPage + 1)"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -302,6 +354,74 @@ onMounted(() => {
 }
 
 .btn-icon-alt:hover { background: var(--bg-hover); }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.page-num {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.page-num:hover:not(.active) {
+  border-color: var(--text-secondary);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.page-num.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
 </style>

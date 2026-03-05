@@ -47,7 +47,8 @@ async function fetchScans() {
   loading.value = true
   error.value = null
   try {
-    scans.value = await AdminService.getAllScans()
+    const response = await AdminService.getAdminScans()
+    scans.value = Array.isArray(response) ? response : (response.scans || [])
   } catch (err) {
     console.error('Failed to fetch platform scans:', err)
     error.value = 'Failed to load platform scans. Please try again later.'

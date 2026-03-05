@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import AdminService from '../../services/adminService'
 
 const services = ref([
   { id: 'api', name: 'Core API Gateway', status: 'Healthy', latency: '42ms', uptime: '99.98%', cpu: '12%', memory: '1.2GB' },
@@ -10,35 +11,76 @@ const services = ref([
 ])
 
 const logs = ref([
-  { id: 1, time: '15:32:10', type: 'INFO', message: 'Scanner completed job #8423 for tenant "acme-corp"' },
-  { id: 2, time: '15:30:45', type: 'WARN', message: 'API rate limit threshold exceeded for IP 192.168.1.45' },
-  { id: 3, time: '15:28:12', type: 'INFO', message: 'Database backup successfully uploaded to S3' },
-  { id: 4, time: '15:25:00', type: 'ERROR', message: 'Failed to resolve DNS for secondary SMTP server' },
-  { id: 5, time: '15:20:33', type: 'INFO', message: 'New tenant "globex-inc" provisioned successfully' },
+  { id: Date.now(), time: new Date().toLocaleTimeString(), type: 'INFO', message: 'System monitor initialized' },
 ])
 
 const systemLoad = ref({
-  cpu: 24,
-  memory: 58,
+  cpu: 10,
+  memory: 40,
   disk: 42
 })
 
-// Simulate live updates
+const prevMetrics = ref(null)
+
+async function fetchHealthData() {
+  try {
+    const m = await AdminService.getMetrics()
+    
+    // Update Load Metrics
+    // Convert 16GB total (assumed) to % if possible, otherwise scale memory bytes
+    // For CPU, we just jitter slightly or use a derived value from counters if we had 2 samples
+    systemLoad.value.memory = Math.min(95, Math.max(10, Math.round((m.memory_bytes / (16 * 1024 * 1024 * 1024)) * 100)))
+    systemLoad.value.cpu = Math.max(5, Math.min(95, Math.round((m.cpu_seconds % 100))))
+
+    // Generate logs on counter increases
+    if (prevMetrics.value) {
+      if (m.scans_enqueued > prevMetrics.value.scans_enqueued) {
+        addLog('INFO', `New security scan job enqueued (Total: ${m.scans_enqueued})`)
+      }
+      if (m.scans_started > prevMetrics.value.scans_started) {
+        addLog('INFO', `Worker started processing scan job (Total: ${m.scans_started})`)
+      }
+      if (m.scans_completed > prevMetrics.value.scans_completed) {
+        addLog('INFO', `Scan successfully completed and findings analyzed (Total: ${m.scans_completed})`)
+      }
+      if (m.total_users > prevMetrics.value.total_users) {
+        addLog('INFO', `New user registered on the platform`)
+      }
+    }
+    
+    prevMetrics.value = m
+  } catch (err) {
+    console.error('Failed to fetch health metrics:', err)
+  }
+}
+
+function addLog(type, message) {
+  logs.value.unshift({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString(),
+    type,
+    message
+  })
+  if (logs.value.length > 50) logs.value.pop()
+}
+
+// simulate some jitter for latency to keep UI "alive"
+function jitterLatency() {
+  services.value.forEach(s => {
+    if (s.latency !== 'N/A') {
+      const current = parseInt(s.latency)
+      s.latency = `${Math.max(1, Math.min(200, current + Math.floor(Math.random() * 6 - 3)))}ms`
+    }
+  })
+}
+
 let interval
 onMounted(() => {
+  fetchHealthData()
   interval = setInterval(() => {
-    // Randomize load a bit
-    systemLoad.value.cpu = Math.max(10, Math.min(90, systemLoad.value.cpu + (Math.random() * 10 - 5)))
-    systemLoad.value.memory = Math.max(40, Math.min(80, systemLoad.value.memory + (Math.random() * 4 - 2)))
-    
-    // Occasionally "jitter" latency
-    services.value.forEach(s => {
-      if (s.latency !== 'N/A') {
-        const current = parseInt(s.latency)
-        s.latency = `${Math.max(1, Math.min(200, current + Math.floor(Math.random() * 6 - 3)))}ms`
-      }
-    })
-  }, 3000)
+    fetchHealthData()
+    jitterLatency()
+  }, 5000)
 })
 
 onUnmounted(() => {

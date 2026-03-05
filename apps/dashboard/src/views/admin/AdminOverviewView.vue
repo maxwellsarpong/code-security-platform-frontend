@@ -7,23 +7,30 @@ import BarChart from '../../components/charts/BarChart.vue'
 const metrics = ref(null)
 const scans = ref([])
 const fixedFindings = ref([])
+const adminUsers = ref([])
+const adminScans = ref([])
+const adminFixedFindings = ref([])
+const adminEvents = ref([])
 const loading = ref(true)
 const error = ref(null)
+
+const EVENTS_PER_PAGE = 3
+const currentEventPage = ref(1)
 
 const stats = computed(() => [
   { 
     label: 'Total Users', 
-    value: metrics.value?.total_users || 0,
+    value: adminUsers.value.length || metrics.value?.total_users || 0,
     sub: 'Platform wide'
   },
   { 
     label: 'Total Scans', 
-    value: metrics.value?.total_scans || scans.value.length || 0,
+    value: adminScans.value.length || metrics.value?.total_scans || scans.value.length || 0,
     sub: 'All time'
   },
   { 
     label: 'Issues Fixed', 
-    value: metrics.value?.total_fixed || fixedFindings.value.length || 0,
+    value: adminFixedFindings.value.length || metrics.value?.total_fixed || fixedFindings.value.length || 0,
     sub: 'Total resolved'
   },
   { 
@@ -34,26 +41,84 @@ const stats = computed(() => [
 ])
 
 const recentActivity = computed(() => {
-  // Merge and sort scans and findings for a timeline
-  const activity = [
-    ...scans.value.slice(0, 5).map(s => ({ ...s, type: 'Scan', date: s.created_at || s.time })),
-    ...fixedFindings.value.slice(0, 5).map(f => ({ ...f, type: 'Fix', date: f.fixed_at || f.created_at }))
-  ]
-  return activity.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
+  let activity = []
+  if (adminEvents.value && adminEvents.value.length > 0) {
+    activity = adminEvents.value.map(e => ({
+      id: e.id || Math.random().toString(36).substr(2, 9),
+      type: e.event_type || 'Event',
+      description: e.description || 'Action performed on platform',
+      date: e.created_at || new Date().toISOString()
+    }))
+  } else {
+    // Fallback merged sorting if adminEvents is empty
+    activity = [
+      ...scans.value.map(s => ({ 
+        id: s.id || `s-${s.time}`, 
+        type: 'Scan', 
+        description: `Scan completed for ${s.repo_url || 'Repo'}`,
+        date: s.created_at || s.time 
+      })),
+      ...fixedFindings.value.map(f => ({ 
+        id: f.id || `f-${f.fixed_at}`, 
+        type: 'Fix', 
+        description: `Finding fixed: ${f.title || 'Security Issue'}`,
+        date: f.fixed_at || f.created_at 
+      }))
+    ]
+  }
+
+  // Sort descending (newest first) as requested
+  const sorted = activity.sort((a, b) => new Date(b.date) - new Date(a.date))
+  
+  // Frontend Pagination
+  const start = (currentEventPage.value - 1) * EVENTS_PER_PAGE
+  const end = start + EVENTS_PER_PAGE
+  return sorted.slice(start, end)
 })
+
+const totalEventActivity = computed(() => {
+  if (adminEvents.value && adminEvents.value.length > 0) return adminEvents.value.length
+  return scans.value.length + fixedFindings.value.length
+})
+
+const totalEventPages = computed(() => Math.ceil(totalEventActivity.value / EVENTS_PER_PAGE))
+
+function changeEventPage(page) {
+  if (page >= 1 && page <= totalEventPages.value) {
+    currentEventPage.value = page
+  }
+}
+
+const getEventIcon = (type) => {
+  const t = type?.toLowerCase() || ''
+  if (t.includes('scan')) return '🔍'
+  if (t.includes('fix') || t.includes('finding')) return '✅'
+  if (t.includes('user')) return '👤'
+  if (t.includes('auth')) return '🔐'
+  if (t.includes('system')) return '⚙️'
+  return '🔔'
+}
 
 async function fetchData() {
   loading.value = true
   error.value = null
   try {
-    const [m, s, f] = await Promise.all([
+    const [m, s, f, u, as, af, ev] = await Promise.all([
       AdminService.getMetrics(),
       AdminService.getAllScans(),
-      AdminService.getFixedFindings()
+      AdminService.getFixedFindings(),
+      AdminService.getAdminUsers(),
+      AdminService.getAdminScans(),
+      AdminService.getAdminFixedFindings(),
+      AdminService.getAdminEvents()
     ])
     metrics.value = m
     scans.value = s
     fixedFindings.value = f
+    adminUsers.value = Array.isArray(u) ? u : (u.users || [])
+    adminScans.value = Array.isArray(as) ? as : (as.scans || [])
+    adminFixedFindings.value = Array.isArray(af) ? af : (af.findings || [])
+    adminEvents.value = Array.isArray(ev) ? ev : (ev.events || [])
   } catch (err) {
     console.error('Failed to fetch admin overview data:', err)
     error.value = 'Failed to load platform data. Please ensure you have admin privileges.'
@@ -118,16 +183,36 @@ const chartData = {
           <div class="activity-feed">
             <div v-for="item in recentActivity" :key="item.id" class="activity-item">
               <div class="activity-icon" :class="item.type.toLowerCase()">
-                {{ item.type === 'Scan' ? '🔍' : '✅' }}
+                {{ getEventIcon(item.type) }}
               </div>
               <div class="activity-content">
                 <span class="activity-type">{{ item.type }}</span>
                 <p class="activity-msg">
-                  {{ item.type === 'Scan' ? `Scan completed for ${item.repo_url || 'Repo'}` : `Finding fixed: ${item.title || 'Security Issue'}` }}
+                  {{ item.description }}
                 </p>
                 <span class="activity-time">{{ new Date(item.date).toLocaleString() }}</span>
               </div>
             </div>
+            
+            <!-- Pagination Controls -->
+            <div v-if="totalEventPages > 1" class="event-pagination">
+              <button 
+                @click="changeEventPage(currentEventPage - 1)" 
+                :disabled="currentEventPage === 1"
+                class="btn-page"
+              >
+                ←
+              </button>
+              <span class="page-info">{{ currentEventPage }} / {{ totalEventPages }}</span>
+              <button 
+                @click="changeEventPage(currentEventPage + 1)" 
+                :disabled="currentEventPage === totalEventPages"
+                class="btn-page"
+              >
+                →
+              </button>
+            </div>
+
             <div v-if="recentActivity.length === 0" class="empty-activity">
               No recent activity recorded.
             </div>
@@ -341,6 +426,48 @@ const chartData = {
 .activity-time {
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.event-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.btn-page {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
 }
 
 .nodes-grid {
