@@ -22,7 +22,7 @@ const plans = [
   {
     name: 'Starter',
     price: 0,
-    scanQuota: 50,
+    scanQuota: 2,
     features: ['2 Scans', 'Basic SAST & secrets', 'Community Support'],
     recommended: false,
     color: 'var(--text-muted)'
@@ -53,9 +53,10 @@ const currentPlan = computed(() => {
   if (!raw && !user) return { name: '—', price: 0 }
   
   // Prioritize plan from user profile as requested, then fallout to usage data
-  const planName = user?.plan || raw?.plan || raw?.subscription_plan || 'Starter'
+  const planName = user?.plan || raw?.plan || raw?.subscription_plan || 'starter'
   
-  return plans.find(p => p.name.toLowerCase() === planName.toLowerCase()) || {
+  const matched = plans.find(p => p.name.toLowerCase() === planName.toLowerCase() || (planName === 'free' && p.name === 'Starter'))
+  return matched || {
     name: planName, price: 0, features: [], recommended: false
   }
 })
@@ -68,8 +69,8 @@ const usageMetrics = computed(() => {
   const metrics = []
 
   // Scans
-  const scansUsed  = raw.current_month_usage ?? raw.scans_used  ?? 0
-  const scansLimit = raw.scan_quota_limit     ?? raw.scan_limit  ?? 1000
+  const scansUsed  = raw.scans_used ?? 0
+  const scansLimit = raw.scan_quota_limit ?? 0
   metrics.push({
     label: 'Scans Used',
     value: scansUsed,
@@ -80,7 +81,7 @@ const usageMetrics = computed(() => {
 
   // Resolutions
   const resUsed  = raw.resolutions_used ?? 0
-  const resLimit = raw.resolve_quota_limit ?? raw.resolution_limit ?? 100
+  const resLimit = raw.resolve_quota_limit ?? 0
   metrics.push({
     label: 'Resolutions',
     value: resUsed,
@@ -108,8 +109,10 @@ const usageMetrics = computed(() => {
 const planMeta = computed(() => {
   const raw = usageData.value || {}
   const user = userProfile.value || {}
-  const quota = raw.scan_quota_limit ?? raw.scan_limit ?? 1000
-  const used = raw.current_month_usage ?? raw.scans_used ?? 0
+  const scanQuota = raw.scan_quota_limit ?? 0
+  const resolveQuota = raw.resolve_quota_limit ?? 0
+  const quota = scanQuota + resolveQuota
+  const used = raw.current_month_usage ?? 0
   
   return {
     plan: (user.plan || raw.plan || raw.subscription_plan || 'Starter').replace(/^\w/, c => c.toUpperCase()),
@@ -266,13 +269,13 @@ onMounted(loadBillingData)
               </svg>
               <div class="ring-label">
                 <span class="ring-value">{{ formatNumber(planMeta.used) }}</span>
-                <span class="ring-sub">of {{ formatNumber(planMeta.quota) }} scans</span>
+                <span class="ring-sub">of {{ formatNumber(planMeta.quota) }} units used</span>
               </div>
             </div>
             <div class="plan-info-row" v-if="planMeta.remaining !== null">
               <span class="info-chip">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                {{ formatNumber(planMeta.remaining) }} scans remaining
+                {{ formatNumber(planMeta.remaining) }} units remaining
               </span>
               <span class="info-chip" v-if="planMeta.resetDate">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -492,6 +495,7 @@ onMounted(loadBillingData)
   margin-bottom: 0.5rem;
   background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -648,7 +652,6 @@ onMounted(loadBillingData)
   flex: 1;
 }
 
-.usage-item {}
 
 .usage-info {
   display: flex;

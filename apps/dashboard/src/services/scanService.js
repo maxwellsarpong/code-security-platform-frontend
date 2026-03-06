@@ -38,12 +38,6 @@ export class ScanService {
       return acc + count
     }, 0) : 0
 
-    // Enhancement: If real data is too clean, show baseline security items for pro look
-    if (hasData && criticalCount === 0) {
-      criticalCount = 2
-      openIssues += 2
-    }
-
     return [
       {
         label: 'Open issues',
@@ -129,11 +123,6 @@ export class ScanService {
       }
     })
 
-    // Enhancement: Ensure chart looks professional even if no criticals exist
-    if (dataToProcess.length > 0 && severityCounts['CRITICAL'] === 0) {
-      severityCounts['CRITICAL'] = 1
-      severityCounts['HIGH'] = 1
-    }
 
     return [
       severityCounts['CRITICAL'],
@@ -143,32 +132,6 @@ export class ScanService {
     ]
   }
 
-  /**
-   * Mock data for "enhanced" dashboard when API has no data
-   */
-  static getMockScans() {
-    return [
-      {
-        id: 'mock-1',
-        repo_url: 'https://github.com/securecode/auth-service',
-        status: 'completed',
-        time: new Date().toISOString(),
-        findings: [
-          { id: 'f-1', title: 'Hardcoded API Key', severity: 'CRITICAL', created_at: new Date().toISOString() },
-          { id: 'f-2', title: 'SQL Injection vulnerability', severity: 'HIGH', created_at: new Date().toISOString() }
-        ]
-      },
-      {
-        id: 'mock-2',
-        repo_url: 'https://github.com/securecode/frontend-app',
-        status: 'completed',
-        time: new Date(Date.now() - 86400000).toISOString(),
-        findings: [
-          { id: 'f-3', title: 'Insecure dependency', severity: 'MEDIUM', created_at: new Date(Date.now() - 86400000).toISOString() }
-        ]
-      }
-    ]
-  }
 }
 
 export default ScanService

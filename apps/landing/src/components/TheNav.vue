@@ -10,7 +10,7 @@ const { goToDashboard } = useDashboard()
 const { logout, isAuthenticated, user, isLoggingOut } = useAuthLanding()
 
 // Authentication state
-const userName = computed(() => user.value?.name || user.value?.email?.split('@')[0] || 'User')
+const userName = computed(() => user.value?.name || user.value?.email || 'Account')
 
 const scrollToSection = (sectionId) => {
   const element = document.getElementById(sectionId)

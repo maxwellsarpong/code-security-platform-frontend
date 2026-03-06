@@ -22,19 +22,9 @@ const storedUser = normalizeUser(DashboardAuthService.getUser())
 
 // Shared auth/tenant state (multi-tenant + admin)
 const state = reactive({
-  currentUser: storedUser || {
-    id: 'f2f6e9ec-5d7b-44dc-a0dc-0ee5b29144f9',
-    email: 'admin@securecode.io',
-    name: 'Platform Admin',
-    role: ROLES.SUPER_ADMIN, // super_admin | tenant_admin | tenant_member
-  },
+  currentUser: storedUser,
   currentTenant: null,
-  tenants: [
-    { id: 't-1', name: 'Acme Corp', slug: 'acme-corp', plan: 'Team', status: 'active', usersCount: 8, createdAt: '2024-06-01' },
-    { id: 't-2', name: 'Globex Inc', slug: 'globex-inc', plan: 'Enterprise', status: 'active', usersCount: 42, createdAt: '2024-07-15' },
-    { id: 't-3', name: 'Initech', slug: 'initech', plan: 'Starter', status: 'active', usersCount: 3, createdAt: '2024-09-20' },
-    { id: 't-4', name: 'Umbrella Labs', slug: 'umbrella-labs', plan: 'Team', status: 'suspended', usersCount: 12, createdAt: '2024-08-10' },
-  ],
+  tenants: [],
   isAuthenticated: DashboardAuthService.isAuthenticated(),
   isLoggingOut: false
 })

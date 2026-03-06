@@ -52,13 +52,6 @@ const criticalFindings = computed(() => {
     }
   })
 
-  // If no real critical findings, inject some "security baseline" samples for a better dashboard experience
-  if (findings.length === 0 && scans.value.length > 0) {
-    findings.push(
-      { id: 'SEC-01', repo: 'auth-service', type: 'Exposed API Credentials', severity: 'critical', created: 'Sample' },
-      { id: 'SEC-02', repo: 'base-api', type: 'Unencrypted Sensitive Data', severity: 'high', created: 'Sample' }
-    )
-  }
 
   return findings.sort((a, b) => {
     if (a.severity === 'critical' && b.severity !== 'critical') return -1
@@ -101,18 +94,11 @@ async function loadData() {
     
     usageData.value = usageResult
     
-    // If we have no data, use mock data to "enhance" the dashboard experience
-    if (!scansResult || scansResult.length === 0) {
-      scans.value = ScanService.getMockScans()
-    } else {
-      scans.value = scansResult
-    }
-    
-    error.value = null // Hide error if we show mock or loaded successfully
+    scans.value = scansResult || []
+    error.value = null 
   } catch (err) {
     console.error('Overview load error:', err)
-    // Fallback to mock on error too, to keep it looking "enhanced"
-    scans.value = ScanService.getMockScans()
+    scans.value = []
     error.value = null 
   } finally {
     isLoading.value = false

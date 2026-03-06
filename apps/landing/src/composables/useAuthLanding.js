@@ -42,12 +42,12 @@ export function useAuthLanding() {
   /**
    * Register new user
    */
-  async function register(email, password, tenant_name) {
+  async function register(email, password) {
     loading.value = true
     error.value = ''
 
     try {
-      const response = await AuthService.register(email, password, tenant_name)
+      const response = await AuthService.register(email, password)
       user.value = response.user
       return response
     } catch (err) {

@@ -18,7 +18,6 @@ const mode = ref('signin') // 'signin' | 'signup'
 const form = ref({
   email: '',
   password: '',
-  tenant_name: '',
 })
 
 onMounted(() => {
@@ -57,7 +56,7 @@ async function submitAuth() {
       const response = await login(form.value.email, form.value.password)
       goToDashboard(response.user || response)
     } else {
-      const response = await register(form.value.email, form.value.password, form.value.tenant_name)
+      const response = await register(form.value.email, form.value.password)
       goToDashboard(response.user || response)
     }
   } catch (err) {
@@ -69,7 +68,6 @@ async function submitAuth() {
 function toggleMode() {
   mode.value = mode.value === 'signin' ? 'signup' : 'signin'
   clearError()
-  form.value.tenant_name = ''
   form.value.email = ''
   form.value.password = ''
 }
@@ -102,10 +100,6 @@ function toggleMode() {
           </div>
 
           <form @submit.prevent="submitAuth" class="auth-form">
-            <div v-if="mode === 'signup'" class="field">
-              <label>Tenant Name</label>
-              <input v-model="form.tenant_name" type="text" placeholder="Acme Corp" class="input" required :disabled="loading" />
-            </div>
             <div class="field">
               <label>Email</label>
               <input v-model="form.email" type="email" placeholder="you@company.com" required class="input" :disabled="loading" />

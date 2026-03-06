@@ -57,7 +57,7 @@ export class AuthService {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Login failed')
+        throw new Error(error.detail || error.message || 'Login failed')
       }
 
       const data = await response.json()
@@ -89,23 +89,22 @@ export class AuthService {
    * Register new user
    * @param {string} email
    * @param {string} password
-   * @param {string} tenant_name
    * @returns {Promise<{access_token: string, token_type: string}>}
    */
-  static async register(email, password, tenant_name) {
+  static async register(email, password) {
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, tenant_name }),
+        body: JSON.stringify({ email, password }),
         credentials: 'include',
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Registration failed')
+        throw new Error(error.detail || error.message || 'Registration failed')
       }
 
       const data = await response.json()
@@ -139,7 +138,7 @@ export class AuthService {
    */
   static async requestPasswordRecovery(email) {
     try {
-      const response = await fetch(`${API_URL}/request-password-recovery`, {
+      const response = await fetch(`${API_URL}/auth/request-password-recovery`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +149,7 @@ export class AuthService {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}))
-        throw new Error(error.message || 'Failed to send password recovery request')
+        throw new Error(error.detail || error.message || 'Failed to send password recovery request')
       }
 
       return await response.json()

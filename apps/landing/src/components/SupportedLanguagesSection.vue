@@ -98,7 +98,6 @@ const marqueeItems = [...languages, ...languages, ...languages, ...languages]
 .marquee-wrapper {
   position: relative;
   width: 100vw;
-  max-width: 100%;
   left: 50%;
   right: 50%;
   margin-left: -50vw;
@@ -134,6 +133,7 @@ const marqueeItems = [...languages, ...languages, ...languages, ...languages]
   display: flex;
   overflow: hidden;
   user-select: none;
+  width: 100%;
 }
 
 .marquee-content {
