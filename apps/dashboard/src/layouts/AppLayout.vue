@@ -36,7 +36,7 @@ const handleLogout = async () => {
 watch(isAuthenticated, (val) => {
   // Only redirect if it wasn't a manual logout (isLoggingOut handles that)
   if (!val && !isLoggingOut.value) {
-    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'https://code-security-platform-frontend-lan.vercel.app'
     window.location.href = `${landingUrl}/login?logout=success`
   }
 })

@@ -134,7 +134,7 @@ router.beforeEach((to, from) => {
   // If route requires auth and user is not authenticated
   if (requiresAuth && !isAuthenticated) {
     // Redirect to landing page login, preserving query params like logout=success
-    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'https://code-security-platform-frontend-lan.vercel.app'
     const queryStr = window.location.search
     window.location.href = `${landingUrl}/login${queryStr}`
     return false

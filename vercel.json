@@ -1,0 +1,22 @@
+{
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rewrites": [
+        {
+            "source": "/api/v1/(.*)",
+            "destination": "https://security-compliance-platform.fly.dev/api/v1/$1"
+        },
+        {
+            "source": "/app",
+            "destination": "/app/index.html"
+        },
+        {
+            "source": "/app/(.*)",
+            "destination": "/app/index.html"
+        },
+        {
+            "source": "/((?!app).*)",
+            "destination": "/index.html"
+        }
+    ]
+}

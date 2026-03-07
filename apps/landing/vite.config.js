@@ -13,7 +13,7 @@ export default defineConfig({
         secure: false,
       },
       '/app': {
-        target: 'http://localhost:5174',
+        target: 'https://code-security-platform-frontend-lan.vercel.app',
         changeOrigin: true,
         ws: true,
       }

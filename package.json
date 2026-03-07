@@ -13,7 +13,7 @@
     "dev:dashboard": "npm run dev --workspace=apps/dashboard",
     "build:landing": "npm run build --workspace=apps/landing",
     "build:dashboard": "npm run build --workspace=apps/dashboard",
-    "build": "npm run build:landing && npm run build:dashboard"
+    "build": "npm run build:landing && npm run build:dashboard && rm -rf dist && mkdir -p dist && cp -r apps/landing/dist/* dist/ && mkdir -p dist/app && cp -r apps/dashboard/dist/* dist/app/"
   },
   "engines": {
     "node": ">=18"
