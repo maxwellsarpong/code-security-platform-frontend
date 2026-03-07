@@ -3,7 +3,7 @@
  * Handles JWT token and API communication
  */
 
-const API_URL = 'http://localhost:8000/api/v1'
+const API_URL = 'https://security-compliance-platform.fly.dev/api/v1'
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'auth_user'
 

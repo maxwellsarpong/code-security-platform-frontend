@@ -132,7 +132,7 @@ export function useAuth() {
     // Note: we leave isLoggingOut true until the page redirects to landing
 
     // Redirect to landing page login using environment variable to avoid hardcoded ports
-    const landingUrl = import.meta.env.VITE_LANDING_URL || 'http://localhost:5173'
+    const landingUrl = import.meta.env.VITE_LANDING_URL || 'https://code-security-platform-frontend-lan.vercel.app'
     window.location.href = `${landingUrl}/login?logout=success`
   }
 
