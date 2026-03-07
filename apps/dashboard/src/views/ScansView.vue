@@ -174,7 +174,7 @@ const handleSubmit = async () => {
     
     // Provide more helpful error messages
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      submitError.value = 'Unable to connect to the API server. Please ensure the backend is reachable at https://security-compliance-platform.fly.dev'
+      submitError.value = 'Unable to connect to the API server. Please ensure the backend is reachable at https://code-security-platform.onrender.com'
     } else if (error.message.includes('CORS')) {
       submitError.value = 'CORS error: The API server needs to allow requests from this origin'
     } else {

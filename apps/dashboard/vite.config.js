@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'https://security-compliance-platform.fly.dev',
+        target: 'https://code-security-platform.onrender.com',
         changeOrigin: true,
         secure: false,
       }
