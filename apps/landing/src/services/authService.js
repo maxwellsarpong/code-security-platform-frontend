@@ -20,7 +20,6 @@ export class AuthService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -52,7 +51,6 @@ export class AuthService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
-        credentials: 'include', // Include cookies if needed
       })
 
       if (!response.ok) {
@@ -99,7 +97,6 @@ export class AuthService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
-        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -144,7 +141,6 @@ export class AuthService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
-        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -210,7 +206,6 @@ export class AuthService {
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
       headers,
-      credentials: 'include',
     })
 
     if (response.status === 401) {

@@ -60,7 +60,7 @@ export class DashboardAuthService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'omit',
       })
 
       if (!response.ok) {
@@ -99,7 +99,7 @@ export class DashboardAuthService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'omit',
         body: JSON.stringify(payload)
       })
 
@@ -143,7 +143,7 @@ export class DashboardAuthService {
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
       headers,
-      credentials: 'include',
+      credentials: 'omit',
     })
 
     if (response.status === 401) {
