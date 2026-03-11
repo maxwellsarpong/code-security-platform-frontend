@@ -856,6 +856,14 @@ const resolveFinding = async (finding) => {
   align-items: center;
   gap: 1rem;
   font-size: 0.95rem;
+  min-width: 0; /* Allow container to shrink */
+}
+
+.info-row .code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .info-label {
