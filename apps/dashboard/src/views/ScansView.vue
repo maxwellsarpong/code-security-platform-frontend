@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import Sheet from '../components/Sheet.vue'
 import Toast from '../components/Toast.vue'
 import DashboardAuthService from '../services/authService'
+import ScanService from '../services/scanService'
 
 const filter = ref('all')
 const isSheetOpen = ref(false)
@@ -30,7 +31,9 @@ const showToast = (message, variant = 'success') => {
 // Scans data
 const scans = ref([])
 const isLoadingScans = ref(false)
+const isPolling = ref(false)
 const scansError = ref(null)
+const previousStatuses = ref(new Map()) // Track scan statuses for notifications
 
 // Findings sheet
 const isFindingsSheetOpen = ref(false)
@@ -67,32 +70,75 @@ watch(filter, () => {
 })
 
 // Fetch scans from API
-const fetchScans = async () => {
-  isLoadingScans.value = true
+const fetchScans = async (isBackground = false) => {
+  if (!isBackground) {
+    isLoadingScans.value = true
+  } else {
+    isPolling.value = true
+  }
   scansError.value = null
 
   try {
-    const response = await DashboardAuthService.request('/scans', {
-      method: 'GET'
-    })
+    const data = await ScanService.getScans()
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch scans: ${response.status}`)
+    // Check for status changes to show notifications
+    if (isBackground) {
+      data.forEach(scan => {
+        const prevStatus = previousStatuses.value.get(scan.id)
+        if (prevStatus && prevStatus !== scan.status) {
+          if (scan.status === 'completed') {
+            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+          } else if (scan.status === 'failed') {
+            showToast(`Scan for ${scan.repo_url} has failed.`, 'error')
+          }
+        }
+        // Update stored status
+        previousStatuses.value.set(scan.id, scan.status)
+      })
+    } else {
+      // First load, just initialize the map
+      data.forEach(scan => {
+        previousStatuses.value.set(scan.id, scan.status)
+      })
     }
 
-    const data = await response.json()
     scans.value = data
   } catch (error) {
     console.error('Error fetching scans:', error)
-    scansError.value = error.message
+    if (!isBackground) {
+      scansError.value = error.message
+    }
   } finally {
     isLoadingScans.value = false
+    isPolling.value = false
+  }
+}
+
+// Polling interval
+let pollInterval = null
+
+const startPolling = () => {
+  if (pollInterval) return
+  pollInterval = setInterval(() => {
+    fetchScans(true)
+  }, 5000)
+}
+
+const stopPolling = () => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
   }
 }
 
 // Load scans on mount
 onMounted(() => {
   fetchScans()
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 
 const openSheet = () => {

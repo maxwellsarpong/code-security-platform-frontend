@@ -1,18 +1,36 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import BillingService from '../services/billingService'
 import StatCard from '../components/modern/StatCard.vue'
 import LineChart from '../components/charts/LineChart.vue'
 import DoughnutChart from '../components/charts/DoughnutChart.vue'
 import ScanService from '../services/scanService'
+import Toast from '../components/Toast.vue'
 
 const { currentTenantName } = useAuth()
 
 const scans = ref([])
 const usageData = ref(null)
 const isLoading = ref(true)
+const isPolling = ref(false)
 const error = ref(null)
+
+const toast = ref({
+  show: false,
+  variant: 'success',
+  message: ''
+})
+
+const showToast = (message, variant = 'success') => {
+  toast.value = {
+    show: true,
+    variant,
+    message
+  }
+}
+
+const previousStatuses = ref(new Map())
 
 const stats = computed(() => ScanService.getStats(scans.value))
 const scansOverTimeData = computed(() => ScanService.getScansOverTime(scans.value))
@@ -81,9 +99,13 @@ function formatTime(timestamp) {
   }
 }
 
-async function loadData() {
+async function loadData(isBackground = false) {
   try {
-    isLoading.value = true
+    if (!isBackground) {
+      isLoading.value = true
+    } else {
+      isPolling.value = true
+    }
     error.value = null
     
     // Fetch both scans and usage data in parallel
@@ -94,22 +116,71 @@ async function loadData() {
     
     usageData.value = usageResult
     
+    // Check for status changes to show notifications
+    if (isBackground) {
+      scansResult.forEach(scan => {
+        const prevStatus = previousStatuses.value.get(scan.id)
+        if (prevStatus && prevStatus !== scan.status) {
+          if (scan.status === 'completed') {
+            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+          } else if (scan.status === 'failed') {
+            showToast(`Scan for ${scan.repo_url} has failed.`, 'error')
+          }
+        }
+        previousStatuses.value.set(scan.id, scan.status)
+      })
+    } else {
+      scansResult.forEach(scan => {
+        previousStatuses.value.set(scan.id, scan.status)
+      })
+    }
+
     scans.value = scansResult || []
     error.value = null 
   } catch (err) {
     console.error('Overview load error:', err)
-    scans.value = []
-    error.value = null 
+    if (!isBackground) {
+      scans.value = []
+    }
   } finally {
     isLoading.value = false
+    isPolling.value = false
   }
 }
 
-onMounted(loadData)
+let pollInterval = null
+
+const startPolling = () => {
+  if (pollInterval) return
+  pollInterval = setInterval(() => {
+    loadData(true)
+  }, 5000)
+}
+
+const stopPolling = () => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+}
+
+onMounted(() => {
+  loadData()
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
+})
 </script>
 
 <template>
   <div class="overview">
+    <Toast
+      v-model:show="toast.show"
+      :variant="toast.variant"
+      :message="toast.message"
+    />
     <div v-if="isLoading" class="loading-overlay">
       <div class="spinner"></div>
       <p>Loading dashboard data...</p>
