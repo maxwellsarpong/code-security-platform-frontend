@@ -32,6 +32,14 @@ const showToast = (message, variant = 'success') => {
 
 const previousStatuses = ref(new Map())
 
+// In-flight resolutions tracking
+const INFLIGHT_KEY = 'scp_inflight_resolutions'
+const inflightResolutions = ref(new Set(JSON.parse(localStorage.getItem(INFLIGHT_KEY) || '[]')))
+
+const saveInflight = () => {
+  localStorage.setItem(INFLIGHT_KEY, JSON.stringify(Array.from(inflightResolutions.value)))
+}
+
 const stats = computed(() => ScanService.getStats(scans.value))
 const scansOverTimeData = computed(() => ScanService.getScansOverTime(scans.value))
 const severityData = computed(() => ScanService.getSeverityData(scans.value))
@@ -119,6 +127,7 @@ async function loadData(isBackground = false) {
     // Check for status changes to show notifications
     if (isBackground) {
       scansResult.forEach(scan => {
+        // 1. Scan status
         const prevStatus = previousStatuses.value.get(scan.id)
         if (prevStatus && prevStatus !== scan.status) {
           if (scan.status === 'completed') {
@@ -128,11 +137,36 @@ async function loadData(isBackground = false) {
           }
         }
         previousStatuses.value.set(scan.id, scan.status)
+
+        // 2. Resolution status
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (inflightResolutions.value.has(finding.id)) {
+              if (finding.is_fixed || finding.pr_url) {
+                showToast(`Pull Request created for: ${finding.title}`, 'success')
+                inflightResolutions.value.delete(finding.id)
+                saveInflight()
+              }
+            }
+          })
+        }
       })
     } else {
       scansResult.forEach(scan => {
         previousStatuses.value.set(scan.id, scan.status)
+
+        // Clean up inflight if already fixed on load
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (finding.is_fixed || finding.pr_url) {
+              if (inflightResolutions.value.has(finding.id)) {
+                inflightResolutions.value.delete(finding.id)
+              }
+            }
+          })
+        }
       })
+      saveInflight()
     }
 
     scans.value = scansResult || []

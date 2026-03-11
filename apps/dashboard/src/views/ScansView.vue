@@ -38,7 +38,16 @@ const previousStatuses = ref(new Map()) // Track scan statuses for notifications
 // Findings sheet
 const isFindingsSheetOpen = ref(false)
 const selectedScan = ref(null)
-const resolvingFindings = ref(new Set()) // Track which findings are being resolved
+
+// In-flight resolutions tracking
+const INFLIGHT_KEY = 'scp_inflight_resolutions'
+const inflightResolutions = ref(new Set(JSON.parse(localStorage.getItem(INFLIGHT_KEY) || '[]')))
+
+const saveInflight = () => {
+  localStorage.setItem(INFLIGHT_KEY, JSON.stringify(Array.from(inflightResolutions.value)))
+}
+
+const resolvingFindings = ref(new Set()) // Track initial request state
 
 // Pagination
 const ITEMS_PER_PAGE = 8
@@ -84,6 +93,7 @@ const fetchScans = async (isBackground = false) => {
     // Check for status changes to show notifications
     if (isBackground) {
       data.forEach(scan => {
+        // 1. Check scan status changes
         const prevStatus = previousStatuses.value.get(scan.id)
         if (prevStatus && prevStatus !== scan.status) {
           if (scan.status === 'completed') {
@@ -92,14 +102,38 @@ const fetchScans = async (isBackground = false) => {
             showToast(`Scan for ${scan.repo_url} has failed.`, 'error')
           }
         }
-        // Update stored status
         previousStatuses.value.set(scan.id, scan.status)
+
+        // 2. Check for resolution completions
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (inflightResolutions.value.has(finding.id)) {
+              if (finding.is_fixed || finding.pr_url) {
+                showToast(`Pull Request created for: ${finding.title}`, 'success')
+                inflightResolutions.value.delete(finding.id)
+                saveInflight()
+              }
+            }
+          })
+        }
       })
     } else {
-      // First load, just initialize the map
+      // First load, just initialize the map and state
       data.forEach(scan => {
         previousStatuses.value.set(scan.id, scan.status)
+        
+        // Clean up inflight if already fixed on load
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (finding.is_fixed || finding.pr_url) {
+              if (inflightResolutions.value.has(finding.id)) {
+                inflightResolutions.value.delete(finding.id)
+              }
+            }
+          })
+        }
       })
+      saveInflight()
     }
 
     scans.value = data
@@ -251,21 +285,24 @@ const resolveFinding = async (finding) => {
       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
     }
 
-    // Mark finding as resolved in the UI
-    if (selectedScan.value && selectedScan.value.findings) {
-      const findingIndex = selectedScan.value.findings.findIndex(f => f.id === finding.id)
-      if (findingIndex !== -1) {
-        selectedScan.value.findings[findingIndex].status = 'resolved'
-      }
-    }
+    // Mark as inflight on the frontend
+    inflightResolutions.value.add(finding.id)
+    saveInflight()
 
-    showToast('Finding resolved successfully!', 'success')
+    showToast('Resolution started in the background...', 'success')
   } catch (error) {
     console.error('Error resolving finding:', error)
-    showToast(`Failed to resolve finding: ${error.message}`, 'error')
+    showToast(`Failed to start resolution: ${error.message}`, 'error')
   } finally {
     resolvingFindings.value.delete(finding.id)
   }
+}
+
+const getFindingState = (finding) => {
+  if (finding.is_fixed || finding.pr_url) return 'resolved'
+  if (inflightResolutions.value.has(finding.id)) return 'resolving'
+  if (resolvingFindings.value.has(finding.id)) return 'started'
+  return 'not_started'
 }
 </script>
 
@@ -491,14 +528,28 @@ const resolveFinding = async (finding) => {
             
             <div class="finding-actions">
               <button
+                v-if="getFindingState(finding) !== 'resolved'"
                 type="button"
                 class="btn btn-primary btn-sm"
                 @click="resolveFinding(finding)"
-                :disabled="resolvingFindings.has(finding.id)"
+                :disabled="getFindingState(finding) !== 'not_started'"
               >
-                <span v-if="resolvingFindings.has(finding.id)" class="spinner-small"></span>
-                {{ resolvingFindings.has(finding.id) ? 'Resolving...' : 'Resolve' }}
+                <span v-if="getFindingState(finding) === 'resolving' || getFindingState(finding) === 'started'" class="spinner-small"></span>
+                {{ 
+                  getFindingState(finding) === 'resolving' ? 'Resolving...' : 
+                  getFindingState(finding) === 'started' ? 'Starting...' : 
+                  'Resolve' 
+                }}
               </button>
+              <a 
+                v-else-if="finding.pr_url" 
+                :href="finding.pr_url" 
+                target="_blank" 
+                class="btn btn-ghost btn-sm pr-link"
+              >
+                View Pull Request
+              </a>
+              <span v-else class="status-fixed">Fixed</span>
             </div>
           </div>
         </div>
