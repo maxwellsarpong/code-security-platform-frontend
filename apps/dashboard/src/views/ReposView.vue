@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import DashboardAuthService from '../services/authService'
+import ScanService from '../services/scanService'
 import BillingService from '../services/billingService'
 import Toast from '../components/Toast.vue'
 
@@ -9,7 +10,18 @@ const usageData = ref(null)
 const isLoading = ref(false)
 const error = ref(null)
 const searchQuery = ref('')
-const resolvingFindings = ref(new Set()) // Track which findings are being resolved
+const resolvingFindings = ref(new Set()) // Track initial request state
+
+// In-flight resolutions tracking
+const INFLIGHT_KEY = 'scp_inflight_resolutions'
+const inflightResolutions = ref(new Set(JSON.parse(localStorage.getItem(INFLIGHT_KEY) || '[]')))
+
+const saveInflight = () => {
+  localStorage.setItem(INFLIGHT_KEY, JSON.stringify(Array.from(inflightResolutions.value)))
+}
+
+const previousStatuses = ref(new Map())
+let pollInterval = null
 
 // Toast notification
 const toast = ref({
@@ -66,46 +78,111 @@ const formatDate = (dateStr) => {
   }
 }
 
-const fetchRepos = async () => {
-  isLoading.value = true
-  error.value = null
+const loadRepos = async (isBackground = false) => {
+  if (!isBackground) {
+    isLoading.value = true
+    error.value = null
+  }
   try {
     // Fetch repos and usage in parallel
-    const [scansRes, usageRes] = await Promise.all([
-      DashboardAuthService.request('/scans', { method: 'GET' }),
+    const [data, usageRes] = await Promise.all([
+      ScanService.getScans(),
       BillingService.getUserUsage().catch(() => null)
     ])
     
     usageData.value = usageRes
     
-    if (!scansRes.ok) throw new Error('Failed to fetch repositories data')
-    const scans = await scansRes.json()
-    
+    // Check for changes and resolution completion
+    if (isBackground) {
+      data.forEach(scan => {
+        // 1. Scan status change notification
+        const prevStatus = previousStatuses.value.get(scan.id)
+        if (prevStatus && prevStatus !== scan.status) {
+          if (scan.status === 'completed') {
+            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+          }
+        }
+        previousStatuses.value.set(scan.id, scan.status)
+
+        // 2. Resolution completion
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (inflightResolutions.value.has(finding.id)) {
+              if (finding.is_fixed || finding.pr_url) {
+                showToast(`Pull Request created for: ${finding.title}`, 'success')
+                inflightResolutions.value.delete(finding.id)
+                saveInflight()
+              }
+            }
+          })
+        }
+      })
+    } else {
+      data.forEach(scan => {
+        previousStatuses.value.set(scan.id, scan.status)
+        // Clean up inflight if already fixed on load
+        if (scan.findings) {
+          scan.findings.forEach(finding => {
+            if (finding.is_fixed || finding.pr_url) {
+              if (inflightResolutions.value.has(finding.id)) {
+                inflightResolutions.value.delete(finding.id)
+              }
+            }
+          })
+        }
+      })
+      saveInflight()
+    }
+
     // Group scans by repo_url and get latest info for each
     const repoMap = {}
-    scans.forEach(scan => {
-      if (!repoMap[scan.repo_url]) {
+    data.forEach(scan => {
+      // Keep only the most recent scan per repo url based on created_at string
+      if (!repoMap[scan.repo_url] || new Date(scan.created_at) > new Date(repoMap[scan.repo_url].lastScan)) {
         repoMap[scan.repo_url] = {
           repo_url: scan.repo_url,
           provider: 'GitHub', 
           lastScan: scan.created_at || 'Recently',
           riskScore: scan.risk_score || 0,
-          issues: scan.findings ? scan.findings.length : 0,
+          issues: scan.findings ? scan.findings.filter(f => !f.is_fixed && !f.pr_url).length : 0,
           findings: scan.findings || [] 
         }
       }
     })
     
     repos.value = Object.values(repoMap)
+
+    // Update selectedRepo if it's open to refresh display
+    if (selectedRepo.value) {
+      const updatedRepo = repos.value.find(r => r.repo_url === selectedRepo.value.repo_url)
+      if (updatedRepo) {
+        selectedRepo.value = updatedRepo
+      }
+    }
   } catch (err) {
     console.error('Error fetching repos:', err)
-    error.value = err.message
+    if (!isBackground) error.value = err.message
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
 }
 
-onMounted(fetchRepos)
+const startPolling = () => {
+  if (pollInterval) return
+  pollInterval = setInterval(() => loadRepos(true), 5000)
+}
+
+onMounted(() => {
+  loadRepos()
+  startPolling()
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+})
 
 const filteredRepos = computed(() => {
   if (!searchQuery.value) return repos.value
@@ -148,26 +225,24 @@ const resolveFinding = async (finding) => {
       throw new Error(errorData.detail || `Error: ${response.status}`)
     }
     
-    showToast('Finding resolved successfully!', 'success')
-    
-    // Remove resolved finding from the list
-    if (selectedRepo.value && selectedRepo.value.findings) {
-      selectedRepo.value.findings = selectedRepo.value.findings.filter(f => f.id !== finding.id)
-      selectedRepo.value.issues = selectedRepo.value.findings.length
-    }
-    
-    // Also update the main repos list to reflect the change
-    const repoIndex = repos.value.findIndex(r => r.repo_url === selectedRepo.value?.repo_url)
-    if (repoIndex !== -1) {
-      repos.value[repoIndex].issues = selectedRepo.value.findings.length
-      repos.value[repoIndex].findings = selectedRepo.value.findings
-    }
+    // Mark as inflight on the frontend
+    inflightResolutions.value.add(finding.id)
+    saveInflight()
+
+    showToast('Resolution started in the background...', 'success')
   } catch (err) {
     console.error('Error resolving finding:', err)
     showToast(err.message || 'Failed to resolve finding', 'error')
   } finally {
     resolvingFindings.value.delete(finding.id)
   }
+}
+
+const getFindingState = (finding) => {
+  if (finding.is_fixed || finding.pr_url) return 'resolved'
+  if (inflightResolutions.value.has(finding.id)) return 'resolving'
+  if (resolvingFindings.value.has(finding.id)) return 'started'
+  return 'not_started'
 }
 </script>
 
@@ -204,7 +279,7 @@ const resolveFinding = async (finding) => {
 
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
-        <button type="button" class="btn btn-ghost" @click="fetchRepos">Retry</button>
+        <button type="button" class="btn btn-ghost" @click="loadRepos()">Retry</button>
       </div>
 
       <div v-else-if="repos.length === 0" class="empty-state">
@@ -315,15 +390,31 @@ const resolveFinding = async (finding) => {
                 <span v-if="finding.line_number" class="meta-item">Line {{ finding.line_number }}</span>
               </div>
               <p v-if="finding.description" class="finding-desc">{{ finding.description }}</p>
-              <button
-                type="button"
-                class="btn btn-primary btn-sm resolve-btn"
-                :disabled="resolvingFindings.has(finding.id)"
-                @click="resolveFinding(finding)"
-              >
-                <span v-if="resolvingFindings.has(finding.id)" class="spinner-small"></span>
-                <span v-else>Resolve</span>
-              </button>
+              <div class="finding-actions">
+                <button
+                  v-if="getFindingState(finding) !== 'resolved'"
+                  type="button"
+                  class="btn btn-primary btn-sm resolve-btn"
+                  :disabled="getFindingState(finding) !== 'not_started'"
+                  @click="resolveFinding(finding)"
+                >
+                  <span v-if="getFindingState(finding) === 'resolving' || getFindingState(finding) === 'started'" class="spinner-small"></span>
+                  {{ 
+                    getFindingState(finding) === 'resolving' ? 'Resolving...' : 
+                    getFindingState(finding) === 'started' ? 'Starting...' : 
+                    'Resolve' 
+                  }}
+                </button>
+                <a 
+                  v-else-if="finding.pr_url" 
+                  :href="finding.pr_url" 
+                  target="_blank" 
+                  class="btn btn-ghost btn-sm pr-link"
+                >
+                  View Pull Request
+                </a>
+                <span v-else class="status-fixed">Fixed</span>
+              </div>
             </div>
           </div>
           <div v-else class="empty-findings">
