@@ -5,6 +5,7 @@ const routes = [
   { path: '/checkout', name: 'checkout', component: () => import('../views/CheckoutView.vue'), meta: { title: 'Checkout – SecureCode' } },
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { title: 'Sign in – SecureCode' } },
   { path: '/recover', name: 'recover', component: () => import('../views/RecoverView.vue'), meta: { title: 'Recover Password – SecureCode' } },
+  { path: '/reset-password', name: 'reset-password', component: () => import('../views/ResetView.vue'), meta: { title: 'Reset Password – SecureCode' } },
   { path: '/enterprise', name: 'enterprise', component: () => import('../views/EnterpriseView.vue'), meta: { title: 'Enterprise – SecureCode' } },
 ]
 

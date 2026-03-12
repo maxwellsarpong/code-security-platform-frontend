@@ -156,6 +156,33 @@ export class AuthService {
   }
 
   /**
+   * Reset password with token
+   * @param {string} token
+   * @param {string} new_password
+   */
+  static async resetPassword(token, newPassword) {
+    try {
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, new_password: newPassword }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.detail || error.message || 'Failed to reset password')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Password reset error:', error)
+      throw error
+    }
+  }
+
+  /**
    * Logout - clear stored credentials
    */
   static logout() {
