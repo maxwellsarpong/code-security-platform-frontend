@@ -268,7 +268,7 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-      <p class="api-key-hint">Use this key to authenticate with the <code>scp-cli</code> tool.</p>
+      <p class="api-key-hint">Use this key to authenticate with the <a href="https://pypi.org/project/scp-cli/" target="_blank" rel="noopener noreferrer" class="api-key-link"><code>scp-cli</code></a> tool.</p>
     </div>
     <div class="stats-grid">
       <StatCard 
@@ -500,6 +500,16 @@ onUnmounted(() => {
 .api-key-hint code {
   color: var(--accent);
   font-weight: 600;
+}
+
+.api-key-link {
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.api-key-link:hover {
+  filter: brightness(1.2);
+  text-decoration: underline;
 }
 
 .tenant-context strong {
