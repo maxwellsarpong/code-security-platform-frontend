@@ -153,6 +153,29 @@ export class DashboardAuthService {
 
     return response
   }
+
+  /**
+   * Fetch user API keys
+   */
+  static async fetchApiKeys() {
+    const response = await this.request('/user/api-keys')
+    if (!response.ok) {
+      throw new Error('Failed to fetch API keys')
+    }
+    const data = await response.json()
+    
+    // Handle different possible response formats:
+    // 1. Array of keys: [{key: '...'}, ...]
+    if (Array.isArray(data)) return data
+    
+    // 2. Object with keys array: { keys: [{key: '...'}, ...] }
+    if (data.keys && Array.isArray(data.keys)) return data.keys
+    
+    // 3. Single key object: { key: '...', ... } (matches user example)
+    if (data && data.key) return [data]
+    
+    return []
+  }
 }
 
 export default DashboardAuthService

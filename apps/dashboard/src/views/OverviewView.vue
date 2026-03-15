@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
+import DashboardAuthService from '../services/authService'
 import BillingService from '../services/billingService'
 import StatCard from '../components/modern/StatCard.vue'
 import LineChart from '../components/charts/LineChart.vue'
@@ -15,6 +16,8 @@ const usageData = ref(null)
 const isLoading = ref(true)
 const isPolling = ref(false)
 const error = ref(null)
+const apiKeys = ref([])
+const isCopying = ref(false)
 
 const toast = ref({
   show: false,
@@ -58,6 +61,19 @@ const recentScans = computed(() => {
       issues: s.findings ? s.findings.length : 0
     }))
 })
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    isCopying.value = true
+    showToast('API Key copied to clipboard!', 'success')
+    setTimeout(() => {
+      isCopying.value = false
+    }, 2000)
+  } catch (err) {
+    showToast('Failed to copy API key', 'error')
+  }
+}
 
 const criticalFindings = computed(() => {
   const findings = []
@@ -117,12 +133,14 @@ async function loadData(isBackground = false) {
     error.value = null
     
     // Fetch both scans and usage data in parallel
-    const [scansResult, usageResult] = await Promise.all([
+    const [scansResult, usageResult, keysResult] = await Promise.all([
       ScanService.getScans().catch(() => []),
-      BillingService.getUserUsage().catch(() => null)
+      BillingService.getUserUsage().catch(() => null),
+      DashboardAuthService.fetchApiKeys().catch(() => [])
     ])
     
     usageData.value = usageResult
+    apiKeys.value = keysResult
     
     // Check for status changes to show notifications
     if (isBackground) {
@@ -232,6 +250,25 @@ onUnmounted(() => {
       You've used <strong>{{ usageData.current_month_usage || 0 }}</strong> 
       of your <strong>{{ usageData.scan_quota_limit || 0 }}</strong> monthly scans.
       <router-link to="/billing" class="link" style="margin-left: 0.5rem">Manage Billing</router-link>
+    </div>
+
+    <!-- API Key Section -->
+    <div v-if="apiKeys.length > 0" class="api-key-banner">
+      <div class="api-key-info">
+        <span class="api-key-label">Your CLI API Key</span>
+        <div class="api-key-container">
+          <code class="api-key-value">{{ apiKeys[0].key }}</code>
+          <button 
+            @click="copyToClipboard(apiKeys[0].key)" 
+            class="copy-btn"
+            :class="{ 'copy-btn--success': isCopying }"
+          >
+            <span v-if="!isCopying">Copy</span>
+            <span v-else>Copied!</span>
+          </button>
+        </div>
+      </div>
+      <p class="api-key-hint">Use this key to authenticate with the <code>scp-cli</code> tool.</p>
     </div>
     <div class="stats-grid">
       <StatCard 
@@ -370,6 +407,99 @@ onUnmounted(() => {
 .context-icon {
   color: var(--accent);
   opacity: 0.7;
+}
+
+/* API Key Banner Styles */
+.api-key-banner {
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.api-key-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.05));
+  pointer-events: none;
+}
+
+.api-key-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.api-key-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.api-key-container {
+  display: flex;
+  align-items: center;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  flex: 1;
+  min-width: 300px;
+  max-width: 600px;
+}
+
+.api-key-value {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.copy-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-left: 0.75rem;
+}
+
+.copy-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.copy-btn--success {
+  background: #10b981;
+}
+
+.api-key-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.api-key-hint code {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .tenant-context strong {
