@@ -97,9 +97,9 @@ const fetchScans = async (isBackground = false) => {
         const prevStatus = previousStatuses.value.get(scan.id)
         if (prevStatus && prevStatus !== scan.status) {
           if (scan.status === 'completed') {
-            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+            showToast(`Scan for ${ScanService.getScanName(scan)} has completed!`, 'success')
           } else if (scan.status === 'failed') {
-            showToast(`Scan for ${scan.repo_url} has failed.`, 'error')
+            showToast(`Scan for ${ScanService.getScanName(scan)} has failed.`, 'error')
           }
         }
         previousStatuses.value.set(scan.id, scan.status)
@@ -410,7 +410,12 @@ const getFindingState = (finding) => {
           </thead>
           <tbody>
             <tr v-for="s in paginatedScans" :key="s.id">
-              <td class="repo-url">{{ s.repo_url }}</td>
+              <td class="repo-url">
+                <div class="repo-info">
+                  <span v-if="s.is_local" class="local-badge">Local</span>
+                  {{ ScanService.getScanName(s) }}
+                </div>
+              </td>
               <td>
                 <span class="risk-score">{{ formatRiskScore(s.risk_score) }}</span>
               </td>
@@ -475,8 +480,8 @@ const getFindingState = (finding) => {
       <div v-if="selectedScan" class="findings-content">
         <div class="findings-header">
           <div class="info-row">
-            <span class="info-label">Repository:</span>
-            <code class="code">{{ selectedScan.repo_url }}</code>
+            <span class="info-label">{{ selectedScan.is_local ? 'Workspace:' : 'Repository:' }}</span>
+            <code class="code">{{ selectedScan.is_local ? 'Local Workspace' : selectedScan.repo_url }}</code>
           </div>
           <div class="info-row">
             <span class="info-label">Risk Score:</span>
@@ -605,6 +610,23 @@ const getFindingState = (finding) => {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+
+.repo-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.local-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
 }
 
 .pagination {

@@ -123,13 +123,29 @@ export class ScanService {
       }
     })
 
-
     return [
       severityCounts['CRITICAL'],
       severityCounts['HIGH'],
       severityCounts['MEDIUM'],
       severityCounts['LOW']
     ]
+  }
+
+  /**
+   * Returns a display name for the scan (Local vs Remote)
+   */
+  static getScanName(scan) {
+    if (!scan) return 'Unknown'
+    if (scan.is_local) return 'Local Workspace'
+    if (!scan.repo_url) return 'Local Scan'
+    
+    // Return the last part of the URL (the repo name)
+    try {
+      const parts = scan.repo_url.split('/')
+      return parts.pop() || scan.repo_url
+    } catch (e) {
+      return scan.repo_url
+    }
   }
 
 }

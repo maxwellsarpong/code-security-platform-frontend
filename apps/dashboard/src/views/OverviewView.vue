@@ -54,8 +54,8 @@ const recentScans = computed(() => {
   return scans.value
     .slice(0, 5)
     .map(s => ({
-      repo: s.repo_url.split('/').pop(),
-      branch: 'main', // Defaulting since it's not in the API yet
+      repo: ScanService.getScanName(s),
+      branch: s.is_local ? 'N/A' : 'main',
       status: s.status === 'completed' ? 'passed' : s.status,
       time: formatTime(s.time || s.created_at),
       issues: s.findings ? s.findings.length : 0
@@ -84,7 +84,7 @@ const criticalFindings = computed(() => {
         if (severity === 'CRITICAL' || severity === 'HIGH') {
           findings.push({
             id: (f.id || 'N/A').toString().substring(0, 6),
-            repo: (s.repo_url || '').split('/').pop() || 'unknown',
+            repo: ScanService.getScanName(s),
             type: f.title || 'Security Finding',
             severity: severity.toLowerCase(),
             created: formatTime(f.created_at || s.time)
@@ -149,9 +149,9 @@ async function loadData(isBackground = false) {
         const prevStatus = previousStatuses.value.get(scan.id)
         if (prevStatus && prevStatus !== scan.status) {
           if (scan.status === 'completed') {
-            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+            showToast(`Scan for ${ScanService.getScanName(scan)} has completed!`, 'success')
           } else if (scan.status === 'failed') {
-            showToast(`Scan for ${scan.repo_url} has failed.`, 'error')
+            showToast(`Scan for ${ScanService.getScanName(scan)} has failed.`, 'error')
           }
         }
         previousStatuses.value.set(scan.id, scan.status)
@@ -311,7 +311,7 @@ onUnmounted(() => {
           <table>
             <thead>
               <tr>
-                <th>Repository</th>
+                <th>Name</th>
                 <th>Branch</th>
                 <th>Status</th>
                 <th>Issues</th>

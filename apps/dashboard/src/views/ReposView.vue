@@ -56,10 +56,12 @@ const closeIssuesModal = () => {
 const ITEMS_PER_PAGE = 8
 const currentPage = ref(1)
 
-const getRepoName = (url) => {
-  if (!url) return ''
-  const parts = url.split('/')
-  return parts[parts.length - 1]
+const getRepoName = (repo) => {
+  if (typeof repo === 'string') {
+    const parts = repo.split('/')
+    return parts.pop() || repo
+  }
+  return ScanService.getScanName(repo)
 }
 
 const formatDate = (dateStr) => {
@@ -99,7 +101,7 @@ const loadRepos = async (isBackground = false) => {
         const prevStatus = previousStatuses.value.get(scan.id)
         if (prevStatus && prevStatus !== scan.status) {
           if (scan.status === 'completed') {
-            showToast(`Scan for ${scan.repo_url} has completed!`, 'success')
+            showToast(`Scan for ${ScanService.getScanName(scan)} has completed!`, 'success')
           }
         }
         previousStatuses.value.set(scan.id, scan.status)
@@ -137,15 +139,18 @@ const loadRepos = async (isBackground = false) => {
     // Group scans by repo_url and get latest info for each
     const repoMap = {}
     data.forEach(scan => {
+      const key = scan.repo_url || 'local-scans'
       // Keep only the most recent scan per repo url based on created_at string
-      if (!repoMap[scan.repo_url] || new Date(scan.created_at) > new Date(repoMap[scan.repo_url].lastScan)) {
-        repoMap[scan.repo_url] = {
+      if (!repoMap[key] || new Date(scan.created_at) > new Date(repoMap[key].lastScan)) {
+        repoMap[key] = {
           repo_url: scan.repo_url,
-          provider: 'GitHub', 
+          isLocal: scan.is_local || !scan.repo_url,
+          provider: scan.repo_url ? 'GitHub' : 'Local', 
           lastScan: scan.created_at || 'Recently',
           riskScore: scan.risk_score || 0,
           issues: scan.findings ? scan.findings.filter(f => !f.is_fixed && !f.pr_url).length : 0,
-          findings: scan.findings || [] 
+          findings: scan.findings || [],
+          scan: scan // Store full scan for getScanName
         }
       }
     })
@@ -188,7 +193,7 @@ const filteredRepos = computed(() => {
   if (!searchQuery.value) return repos.value
   const query = searchQuery.value.toLowerCase()
   return repos.value.filter(repo => {
-    const name = getRepoName(repo.repo_url).toLowerCase()
+    const name = getRepoName(repo.scan || repo.repo_url).toLowerCase()
     return name.includes(query)
   })
 })
@@ -301,7 +306,10 @@ const getFindingState = (finding) => {
           <tbody>
             <tr v-for="r in paginatedRepos" :key="r.repo_url">
               <td>
-                <span class="repo-name">{{ getRepoName(r.repo_url) }}</span>
+                <div class="repo-info-cell">
+                  <span v-if="r.isLocal" class="local-badge-sm">Local</span>
+                  <span class="repo-name">{{ ScanService.getScanName(r.scan || { repo_url: r.repo_url }) }}</span>
+                </div>
               </td>
               <td>{{ r.provider }}</td>
               <td class="text-muted">{{ formatDate(r.lastScan) }}</td>
@@ -363,7 +371,7 @@ const getFindingState = (finding) => {
     <div v-if="isIssuesModalOpen" class="modal-overlay" @click="closeIssuesModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h2>{{ selectedRepo ? getRepoName(selectedRepo.repo_url) : 'Issues' }}</h2>
+          <h2>{{ selectedRepo ? ScanService.getScanName(selectedRepo.scan || { repo_url: selectedRepo.repo_url }) : 'Issues' }}</h2>
           <button 
             type="button" 
             class="btn-close"
@@ -515,6 +523,23 @@ const getFindingState = (finding) => {
 .repo-name {
   font-weight: 600;
   color: var(--text);
+}
+
+.repo-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.local-badge-sm {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: white;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
 }
 
 .risk-score {
