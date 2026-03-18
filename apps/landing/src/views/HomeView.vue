@@ -5,6 +5,7 @@ import FeaturesSection from '../components/FeaturesSection.vue'
 import BillingSection from '../components/BillingSection.vue'
 import MetricsSection from '../components/MetricsSection.vue'
 import ProcessSection from '../components/ProcessSection.vue'
+import CLIShowcaseSection from '../components/CLIShowcaseSection.vue'
 import SupportedLanguagesSection from '../components/SupportedLanguagesSection.vue'
 import CtaSection from '../components/CtaSection.vue'
 import TheFooter from '../components/TheFooter.vue'
@@ -18,6 +19,7 @@ import TheFooter from '../components/TheFooter.vue'
       <FeaturesSection />
       <MetricsSection />
       <ProcessSection />
+      <CLIShowcaseSection />
       <SupportedLanguagesSection />
       <BillingSection />
       <CtaSection />
