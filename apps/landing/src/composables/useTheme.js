@@ -1,33 +1,19 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const theme = ref('dark')
 
 export function useTheme() {
   const initTheme = () => {
-    const stored = localStorage.getItem('theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
-    theme.value = stored || (prefersDark ? 'dark' : 'light')
+    // Always enforce dark mode, ignoring localStorage and system preferences
+    theme.value = 'dark'
     applyTheme()
   }
 
   const applyTheme = () => {
     const html = document.documentElement
-    if (theme.value === 'light') {
-      html.classList.add('light-mode')
-    } else {
-      html.classList.remove('light-mode')
-    }
+    // Since we only want dark mode, we always remove 'light-mode'
+    html.classList.remove('light-mode')
   }
-
-  const toggleTheme = () => {
-    theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  }
-
-  watch(theme, (newTheme) => {
-    localStorage.setItem('theme', newTheme)
-    applyTheme()
-  })
 
   onMounted(() => {
     initTheme()
@@ -35,7 +21,6 @@ export function useTheme() {
 
   return {
     theme,
-    toggleTheme,
     initTheme,
   }
 }

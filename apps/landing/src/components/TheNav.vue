@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useTheme } from '../composables/useTheme'
 import { useDashboard } from '../composables/useDashboard'
 import { useAuthLanding } from '../composables/useAuthLanding'
 
 const menuOpen = ref(false)
-const { theme, toggleTheme } = useTheme()
 const { goToDashboard } = useDashboard()
 const { logout, isAuthenticated, user, isLoggingOut } = useAuthLanding()
 
@@ -43,11 +41,6 @@ const handleLogout = async () => {
         <router-link to="/login" class="nav-link">Get started</router-link>
       </nav>
       <div class="actions">
-        <button class="theme-toggle" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
-          <span class="icon-dark">🌙</span>
-          <span class="icon-light">☀️</span>
-        </button>
-        
         <!-- Authenticated User UI -->
         <div v-if="isAuthenticated || isLoggingOut" class="user-section">
           <div class="user-avatar">
@@ -257,35 +250,6 @@ const handleLogout = async () => {
   transform: scale(1.08) translateY(-2px);
   box-shadow: 0 4px 16px rgba(34, 211, 238, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   border-color: rgba(34, 211, 238, 0.5);
-}
-
-.theme-toggle {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--radius);
-  transition: all 0.3s ease;
-}
-
-.theme-toggle:hover {
-  background: rgba(34, 211, 238, 0.1);
-}
-
-.icon-light {
-  display: none;
-}
-
-html.light-mode .icon-light {
-  display: inline;
-}
-
-html.light-mode .icon-dark {
-  display: none;
 }
 
 .menu-toggle {
